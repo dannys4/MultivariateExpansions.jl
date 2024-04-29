@@ -1,6 +1,7 @@
 module MultivariateExpansions
 
 using MultiIndexing
+export polynomialAssembly!
 
 # Assume all polynomials of degree zero are unity
 # Assume we add to out

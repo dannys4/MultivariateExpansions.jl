@@ -1,6 +1,6 @@
 using MultivariateExpansions
-using Test
+using Test, Random, MultiIndexing
 
 @testset "MultivariateExpansions.jl" begin
-    # Write your tests here.
+    include("polynomial_assembly.jl")
 end
