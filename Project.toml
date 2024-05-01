@@ -4,11 +4,12 @@ authors = ["Daniel Sharp <dannys4@mit.edu> and contributors"]
 version = "1.0.0-DEV"
 
 [deps]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MultiIndexing = "b97ecbdf-1535-430e-a7c7-b5702749f368"
 
 [compat]
-julia = "1"
 MultiIndexing = "1"
+julia = "1"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
