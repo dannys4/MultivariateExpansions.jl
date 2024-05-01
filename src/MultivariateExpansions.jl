@@ -1,7 +1,9 @@
 module MultivariateExpansions
 
 using MultiIndexing, LinearAlgebra
-export polynomialAssembly!, polynomialAssembly, score_loss
+export polynomialAssembly!, polynomialAssembly
+export polynomialsEval!, polynomialsEval
+export score_loss, score_optimal_coeff
 
 """
     polynomialAssembly!(out, fmset, coeffs, univariateEvals)
@@ -46,6 +48,38 @@ function polynomialAssembly!(out::AbstractVector, fmset::FixedMultiIndexSet{d},
     nothing
 end
 
+function polynomialsEval!(out::AbstractMatrix, fmset::FixedMultiIndexSet{d},
+    univariateEvals::NTuple{d, T}) where {d, T <: AbstractMatrix}
+    # M = num points, N = num multi-indices, d = input dimension
+    # out = (M,)
+    # coeffs = (N,)
+    # univariateEvals = (d,(p_j, M))
+    N_midx = length(fmset)
+    M_pts = size(out,2)
+    @assert size(out,1) == N_midx "Row count of out must match number of multi-indices"
+
+    @inbounds for i in 1:d
+        @assert size(univariateEvals[i], 1)>=fmset.max_orders[i] + 1 "Degree must match"
+        @assert size(univariateEvals[i], 2)==M_pts "Number of points must match"
+    end
+
+    Threads.@threads for pt_idx in 1:M_pts
+        @inbounds for midx in 1:N_midx
+            start_midx = fmset.starts[midx]
+            end_midx = fmset.starts[midx + 1] - 1
+
+            termVal = 1.0
+            for j in start_midx:end_midx
+                dim = fmset.nz_indices[j]
+                power = fmset.nz_values[j]
+                termVal *= univariateEvals[dim][power + 1, pt_idx]
+            end
+            out[midx,pt_idx] = termVal
+        end
+    end
+    nothing
+end
+
 """
     polynomialAssembly(fmset, coeffs, univariateEvals)
 Out-of-place assembly of multivariate polynomial
@@ -56,6 +90,12 @@ function polynomialAssembly(
         fmset::FixedMultiIndexSet{d}, coeffs::AbstractVector, univariateEvals) where {d}
     out = zeros(eltype(univariateEvals[1]), size(univariateEvals[1], 2))
     polynomialAssembly!(out, fmset, coeffs, univariateEvals)
+    out
+end
+
+function polynomialsEval(fmset::FixedMultiIndexSet{d}, univariateEvals) where {d}
+    out = zeros(eltype(univariateEvals[1]), length(fmset), size(univariateEvals[1], 2))
+    polynomialsEval!(out, fmset, univariateEvals)
     out
 end
 
