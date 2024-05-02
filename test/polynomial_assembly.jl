@@ -41,3 +41,21 @@ end
     out2 = polynomialsEval(fmset, univariateEvals)
     @test isapprox(out, out2, atol=1e-12)
 end
+
+@testset "Polynomial average" begin
+    out = zeros(length(fmset))
+    polynomialAverage!(out, fmset, univariateEvals)
+    all_out_correct = true
+    for (poly_idx,midx) in enumerate(mset)
+        expected_poly_avg = 0.
+        for pt_idx in 1:N_pts
+            idx_eval = prod(pts[:,pt_idx] .^ midx)
+            expected_poly_avg += idx_eval
+        end
+        expected_poly_avg /= N_pts
+        all_out_correct &= isapprox(out[poly_idx], expected_poly_avg, atol=1e-12)
+    end
+    @test all_out_correct
+    out2 = polynomialAverage(fmset, univariateEvals)
+    @test isapprox(out, out2, atol=1e-12)
+end
