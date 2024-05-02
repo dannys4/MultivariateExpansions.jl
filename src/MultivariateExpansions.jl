@@ -3,7 +3,7 @@ module MultivariateExpansions
 using MultiIndexing, LinearAlgebra
 export polynomialAssembly!, polynomialAssembly
 export polynomialsEval!, polynomialsEval
-export polynomialAverage!, polynomialAverage
+export polynomialsAverage!, polynomialsAverage
 export score_loss, score_optimal_coeff
 
 """
@@ -92,7 +92,7 @@ function polynomialsEval!(out::AbstractMatrix, fmset::FixedMultiIndexSet{d},
 end
 
 """
-    polynomialAverage!(out, fmset, univariateEvals)
+    polynomialsAverage!(out, fmset, univariateEvals)
 Evaluate the average of a set of polynomials over a set of points given the univariate polynomial evaluations
 
 # Arguments
@@ -100,9 +100,9 @@ Evaluate the average of a set of polynomials over a set of points given the univ
 - `fmset::FixedMultiIndexSet{d}`: The fixed multi-index set defining the polynomial space (N,d)
 - `univariateEvals::NTuple{d, AbstractMatrix}`: The univariate evaluations at each marginal point (d,(p_j, M)), where p_j is the maximum degree of the j-th univariate polynomial
 
-See also [`polynomialAverage`](@ref).
+See also [`polynomialsAverage`](@ref).
 """
-function polynomialAverage!(out::AbstractVector, fmset::FixedMultiIndexSet{d},
+function polynomialsAverage!(out::AbstractVector, fmset::FixedMultiIndexSet{d},
         univariateEvals::NTuple{d, T}) where {d, T <: AbstractMatrix}
     N_midx = length(fmset)
     M_pts = size(univariateEvals[1], 2)
@@ -155,14 +155,14 @@ function polynomialsEval(fmset::FixedMultiIndexSet{d}, univariateEvals) where {d
 end
 
 """
-    polynomialAverage(fmset, univariateEvals)
+    polynomialsAverage(fmset, univariateEvals)
 Out-of-place evaluation of the average of a set of polynomials
 
-See [`polynomialAverage!`](@ref) for details.
+See [`polynomialsAverage!`](@ref) for details.
 """
-function polynomialAverage(fmset::FixedMultiIndexSet{d}, univariateEvals) where {d}
+function polynomialsAverage(fmset::FixedMultiIndexSet{d}, univariateEvals) where {d}
     out = zeros(length(fmset))
-    polynomialAverage!(out, fmset, univariateEvals)
+    polynomialsAverage!(out, fmset, univariateEvals)
     out
 end
 
