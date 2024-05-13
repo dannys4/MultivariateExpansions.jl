@@ -40,79 +40,20 @@ _MonicLegendreAk = Returns(0)
 _MonicLegendreBk(k::Int) = (k*k)/(4k*k-1)
 MonicLegendrePolynomial() = MonicOrthogonalPolynomial(_MonicLegendreAk,_MonicLegendreBk)
 
-# _MonicJacobiAk(k::Int,p::Tuple) = (p[2]^2-p[1]^2)/((p[1]+p[2]+2k)*(p[1]+p[2]+2k+2))
-# _MonicJacobiBk(k::Int,p::Tuple) = 4k*(k+p[1])*(k+p[2])*(k+p[1]+p[2])/(((2k+p[1]+p[2])^2)*(2k+p[1]+p[2]+1)*(2k+p[1]+p[2]-1))
-
-struct _MonicJacobiCoeffs{r,AB} end
-
-function (j::_MonicJacobiCoeffs{Val{Recurrence.Ak},Val{AB}})(k::Int) where {AB}
-    alpha,beta = AB
-    (beta^2-alpha^2)/((alpha+beta+2k)*(alpha+beta+2k+2))
-end
-
-function (j::_MonicJacobiCoeffs{Val{Recurrence.Bk},Val{AB}})(k::Int) where {AB}
-    alpha, beta = AB
-    4k*(k+alpha)*(k+beta)*(k+alpha+beta)/(((2k+alpha+beta)^2)*(2k+alpha+beta+1)*(2k+alpha+beta-1))
-end
+# _MonicJacobiAk(k::Int,p::Tuple) = (beta^2-alpha^2)/((alpha+beta+2k)*(alpha+beta+2k+2))
+# _MonicJacobiBk(k::Int,p::Tuple) = 4k*(k+alpha)*(k+beta)*(k+alpha+beta)/(((2k+alpha+beta)^2)*(2k+alpha+beta+1)*(2k+alpha+beta-1))
 
 function MonicJacobiPolynomial(alpha::T,beta::T) where {T}
-    Ak = _JacobiCoeffs{Val{Recurrence.Ak},Val{(alpha,beta)}}()
-    Bk = _JacobiCoeffs{Val{Recurrence.Bk},Val{(alpha,beta)}}()
-    MonicOrthogonalPolynomial{Ak,Bk}()
+    alpha == 0. && beta == 0. && return MonicLegendrePolynomial()
+
+    Ak(k::Int) = (beta^2-alpha^2)/((alpha+beta+2k)*(alpha+beta+2k+2))
+    Bk(k::Int) = 4k*(k+alpha)*(k+beta)*(k+alpha+beta)/(((2k+alpha+beta)^2)*(2k+alpha+beta+1)*(2k+alpha+beta-1))
+    MonicOrthogonalPolynomial(Ak,Bk)
 end
-
-
-# function _JacobiLk(k::Int,::Val{AB}) where {AB}
-#     alpha, beta = AB
-#     2(k+1)*(k+1+alpha+beta)*(2k+alpha+beta)
-# end
-
-# function _JacobiMk(k::Int,::Val{AB}) where {AB}
-#     alpha, beta = AB
-#     (2k+alpha+beta+1)*(2k+2+alpha+beta)*(2k+alpha+beta)
-# end
-
-# function _JacobiAk(k::Int,::Val{AB}) where {AB}
-#     alpha,beta = AB
-#     (beta^2-alpha^2)*(2k+alpha+beta+1)
-# end
-
-# function _JacobiBk(k::Int,::Val{AB}) where {AB}
-#     alpha, beta = AB
-#     2*(k+alpha)*(k+beta)*(2k+alpha+beta+2)
-# end
-
-struct _JacobiCoeffs{r,AB} end
-
-function (j::_JacobiCoeffs{Val{Recurrence.Lk},Val{AB}})(k::Int) where {AB}
-    alpha, beta = AB
-    2(k+1)*(k+1+alpha+beta)*(2k+alpha+beta)
-end
-
-function (j::_JacobiCoeffs{Val{Recurrence.Mk},Val{AB}})(k::Int) where {AB}
-    alpha, beta = AB
-    (2k+alpha+beta+1)*(2k+2+alpha+beta)*(2k+alpha+beta)
-end
-
-function (j::_JacobiCoeffs{Val{Recurrence.Ak},Val{AB}})(k::Int) where {AB}
-    alpha,beta = AB
-    (beta^2-alpha^2)*(2k+alpha+beta+1)
-end
-
-function (j::_JacobiCoeffs{Val{Recurrence.Bk},Val{AB}})(k::Int) where {AB}
-    alpha, beta = AB
-    2*(k+alpha)*(k+beta)*(2k+alpha+beta+2)
-end
-
-# function JacobiPolynomial(alpha::T,beta::T) where {T}
-#     Lk = _JacobiCoeffs{Val{Recurrence.Lk},Val{(alpha,beta)}}()
-#     Mk = _JacobiCoeffs{Val{Recurrence.Mk},Val{(alpha,beta)}}()
-#     Ak = _JacobiCoeffs{Val{Recurrence.Ak},Val{(alpha,beta)}}()
-#     Bk = _JacobiCoeffs{Val{Recurrence.Bk},Val{(alpha,beta)}}()
-#     OrthogonalPolynomial(Lk,Mk,Ak,Bk)
-# end
 
 function JacobiPolynomial(alpha::T,beta::T) where {T}
+    alpha == 0. && beta == 0. && return LegendrePolynomial()
+
     Lk(k::Int) = 2(k+1)*(k+1+alpha+beta)*(2k+alpha+beta)
     Mk(k::Int) = (2k+alpha+beta+1)*(2k+2+alpha+beta)*(2k+alpha+beta)
     Ak(k::Int) = (beta^2-alpha^2)*(2k+alpha+beta+1)
@@ -142,11 +83,11 @@ function Evaluate!(space::AbstractMatrix{U},poly::MonicOrthogonalPolynomial{Ak,B
     N,deg = length(x),size(space,1)-1
     @assert size(space,2) == N
     @assert deg >= 0
-    space[1,:] .= one(U)
+    space[0+1,:] .= one(U)
     deg == 0 && return
     ak, bk = poly.ak, poly.bk
-    space[2,:] .= x .- ak(0)
-    @inbounds for k in 1:deg-1
+    space[1+1,:] .= x .- ak(0)
+    for k in 1:deg-1
         idx = k+1
         for j in eachindex(x)
             space[idx+1,j] = (x[j] - ak(k))*space[idx,j] - bk(k)*space[idx-1,j]
