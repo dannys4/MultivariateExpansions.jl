@@ -40,9 +40,6 @@ _MonicLegendreAk = Returns(0)
 _MonicLegendreBk(k::Int) = (k*k)/(4k*k-1)
 MonicLegendrePolynomial() = MonicOrthogonalPolynomial(_MonicLegendreAk,_MonicLegendreBk)
 
-# _MonicJacobiAk(k::Int,p::Tuple) = (beta^2-alpha^2)/((alpha+beta+2k)*(alpha+beta+2k+2))
-# _MonicJacobiBk(k::Int,p::Tuple) = 4k*(k+alpha)*(k+beta)*(k+alpha+beta)/(((2k+alpha+beta)^2)*(2k+alpha+beta+1)*(2k+alpha+beta-1))
-
 function MonicJacobiPolynomial(alpha::T,beta::T) where {T}
     alpha == 0. && beta == 0. && return MonicLegendrePolynomial()
 
@@ -100,32 +97,3 @@ function Evaluate(max_degree::Int, poly::Polynomial, x::AbstractVector{U}) where
     Evaluate!(space,poly,x)
     space
 end
-"""
-##
-N_pts, deg = 10000, 10
-alpha, beta = 2.78420, 8.5920
-xgrid = range(-1,1,length=N_pts+2)[2:end-1]
-space = zeros(deg+1,N_pts)
-poly = MonicLegendrePolynomial() #JacobiPolynomial(alpha,beta)
-Evaluate!(space,poly,xgrid)
-deg1_pred = (alpha+1) .+ (alpha+beta+2) .* (xgrid .- 1)/2
-deg2_pred = 0.5*(alpha+1)*(alpha+2) .+ (alpha+2)*(alpha+beta+3)*(xgrid .- 1)/2 .+ 0.5*(alpha+beta+3)*(alpha+beta+4)*((xgrid .- 1)/2).^2
-##
-fig = Figure()
-ax = Axis(fig[1,1])
-leg_poly_4 = x->(35x^4 - 30x^2 + 3)/35
-leg_poly_5 = x->(63x^5 - 70x^3 + 15x)/63
-lines!(ax, xgrid, space[6,:], label="Degree 4, computed")
-lines!(ax, xgrid, leg_poly_5.(xgrid), label="Degree 4, Legendre")
-# lines!(ax, xgrid, deg2_pred, label="Degree 2, predicted")
-axislegend()
-fig
-
-##
-@variables x α β
-sym_space = zeros(typeof(x),deg+1,1)
-sym_poly = JacobiPolynomial(α,β)
-Evaluate!(sym_space, sym_poly, [x])
-poly2 = (α + 1)*(α + 2)//2 + (α + 2)*(α + β + 3)*(x - 1)//2 + (α + β + 3)*(α + β + 4)*((x - 1)//2)^2//2
-ff = simplify(substitute(sym_space[3], x=>1))
-"""
