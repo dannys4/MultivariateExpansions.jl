@@ -1,7 +1,7 @@
 name = "MultivariateExpansions"
 uuid = "9d32bc2f-1c07-4c0c-b0b2-5edd4e076357"
 authors = ["Daniel Sharp <dannys4@mit.edu> and contributors"]
-version = "1.0.2"
+version = "1.0.3"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
