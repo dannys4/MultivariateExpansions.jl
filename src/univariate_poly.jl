@@ -40,8 +40,8 @@ _LegendreAk(k::Int) = 0
 _LegendreBk(k::Int) = k
 LegendrePolynomial() = OrthogonalPolynomial(_LegendreLk,_LegendreMk,_LegendreAk,_LegendreBk)
 
-_MonicLegendreAk = Returns(0)
-_MonicLegendreBk(k::Int) = (k*k)/(4k*k-1)
+_MonicLegendreAk = Returns(0.)
+_MonicLegendreBk(k::Int) = (k*k)/(4k*k-1.)
 MonicLegendrePolynomial() = MonicOrthogonalPolynomial(_MonicLegendreAk,_MonicLegendreBk)
 
 function MonicJacobiPolynomial(alpha::T,beta::T) where {T}
@@ -67,14 +67,19 @@ function Evaluate!(space::AbstractMatrix{U}, poly::OrthogonalPolynomial,x::Abstr
     N,deg = length(x),size(space,1)-1
     @assert size(space,2) == N
     @assert deg >= 0 "Degree must be nonnegative"
-    space[0+1,:] .= one(U)
-    deg == 0 && return
+    if deg == 0
+        space[0+1,:] .= one(U)
+        return
+    end
+
     lk, mk, ak, bk = poly.lk, poly.mk, poly.ak, poly.bk
-    space[1+1,:] .= (mk(0)*x .- ak(0))/lk(0)
-    for k in 1:deg-1
-        idx = k+1
-        for j in eachindex(x)
-            space[idx+1,j] = (mk(k)*x[j] - ak(k))*space[idx,j] - bk(k)*space[idx-1,j]
+
+    @inbounds for j in eachindex(x)
+        space[0+1,j] = one(U)
+        space[1+1,j] = muladd(mk(0), x[j], -ak(0))/lk(0)
+        @simd for k in 1:deg-1
+            idx = k+1
+            space[idx+1,j] = muladd(muladd(mk(k), x[j], -ak(k)), space[idx,j], -bk(k)*space[idx-1,j])
             space[idx+1,j] /= lk(k)
         end
     end
@@ -85,17 +90,20 @@ function EvalDiff!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U},
     @assert size(eval_space,2) == N "eval_space has $(size(eval_space,2)) columns, expected $N"
     @assert size(diff_space,1) == deg+1 && size(diff_space,2) == N "diff_space size $(size(diff_space)), expected ($(deg+1),$N)"
     @assert deg >= 0 "Degree must be nonnegative"
-    eval_space[0+1,:] .= one(U)
-    diff_space[0+1,:] .= zero(U)
-    deg == 0 && return
+    if deg == 0
+        eval_space[0+1,:] .= one(U)
+        diff_space[0+1,:] .= zero(U)
+        return
+    end
     lk, mk, ak, bk = poly.lk, poly.mk, poly.ak, poly.bk
-    for j in eachindex(x)
+
+    @inbounds for j in eachindex(x)
+        eval_space[0+1,j] = one(U)
+        diff_space[0+1,j] = zero(U)
         eval_space[1+1,j] = muladd(mk(0), x[j], -ak(0))/lk(0)
         diff_space[1+1,j] = convert(U,mk(0)/lk(0))
-    end
-    for k in 1:deg-1
-        idx = k+1
-        for j in eachindex(x)
+        @simd for k in 1:deg-1
+            idx = k+1
             pk_ = muladd(mk(k), x[j], -ak(k))
             eval_space[idx+1,j] = muladd(pk_,   eval_space[idx,j], -bk(k)*eval_space[idx-1,j])
             diff_space[idx+1,j] = muladd(mk(k), eval_space[idx,j], muladd(pk_, diff_space[idx,j], -bk(k)*diff_space[idx-1,j]))
@@ -109,14 +117,19 @@ function Evaluate!(space::AbstractMatrix{U},poly::MonicOrthogonalPolynomial{Ak,B
     N,deg = length(x),size(space,1)-1
     @assert size(space,2) == N
     @assert deg >= 0
-    space[0+1,:] .= one(U)
-    deg == 0 && return
+    if deg == 0
+        space[0+1,:] .= one(U)
+        return
+    end
+
     ak, bk = poly.ak, poly.bk
-    space[1+1,:] .= x .- ak(0)
-    for k in 1:deg-1
-        idx = k+1
-        for j in eachindex(x)
-            space[idx+1,j] = (x[j] - ak(k))*space[idx,j] - bk(k)*space[idx-1,j]
+
+    @inbounds for j in eachindex(x)
+        space[0+1,j] = one(U)
+        space[1+1,j] = x[j] - ak(0)
+        @simd for k in 1:deg-1
+            idx = k+1
+            space[idx+1,j] = muladd(x[j] - ak(k), space[idx,j], -bk(k)*space[idx-1,j])
         end
     end
 end
@@ -126,19 +139,23 @@ function EvalDiff!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U},
     @assert size(eval_space,2) == N "eval_space has $(size(eval_space,2)) columns, expected $N"
     @assert size(diff_space,1) == deg+1 && size(diff_space,2) == N "diff_space size $(size(diff_space)), expected ($(deg+1),$N)"
     @assert deg >= 0 "Degree must be nonnegative"
-    eval_space[0+1,:] .= one(U)
-    diff_space[0+1,:] .= zero(U)
-    deg == 0 && return
-    ak, bk = poly.ak, poly.bk
-
-    for j in eachindex(x)
-        eval_space[1+1,j] = x[j] - ak(0)
-        diff_space[1+1,j] = one(U)
+    if deg == 0
+        eval_space[0+1,:] .= one(U)
+        diff_space[0+1,:] .= zero(U)
+        return
     end
 
-    for k in 1:deg-1
-        idx = k+1
-        for j in eachindex(x)
+    ak, bk = poly.ak, poly.bk
+
+    @inbounds for j in eachindex(x)
+        eval_space[0+1,j] = one(U)
+        diff_space[0+1,j] = zero(U)
+
+        eval_space[1+1,j] = x[j] - ak(0)
+        diff_space[1+1,j] = one(U)
+
+        @simd for k in 1:deg-1
+            idx = k+1
             eval_space[idx+1,j] = muladd(x[j] - ak(k), eval_space[idx,j], -bk(k)*eval_space[idx-1,j])
             diff_space[idx+1,j] = muladd(x[j] - ak(k), diff_space[idx,j], muladd(-bk(k), diff_space[idx-1,j], eval_space[idx,j]))
         end
