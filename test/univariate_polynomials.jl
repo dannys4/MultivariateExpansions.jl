@@ -118,6 +118,9 @@ end
         EvalDiff!(eval_space, diff_space, prob_hermite_poly, pts)
         @test isapprox(eval_space, ref_eval_space, rtol=1e-12)
         @test isapprox(diff_space, ref_diff_space, rtol=1e-12)
+
+        @test 0 == @allocated(EvalDiff!(eval_space, diff_space, prob_hermite_poly, pts))
+
         out_of_place_eval, out_of_place_diff = EvalDiff(p, prob_hermite_poly, pts)
         @test isapprox(out_of_place_eval, eval_space, rtol=1e-12)
         @test isapprox(out_of_place_diff, diff_space, rtol=1e-12)
@@ -137,10 +140,20 @@ end
         diff_space = zeros(p+1, N_pts)
         EvalDiff!(eval_space, diff_space, legendre_poly, pts)
 
+        @test 0 == @allocated(EvalDiff!(eval_space, diff_space, legendre_poly, pts))
+
         @test isapprox(eval_space, ref_eval_space, rtol=1e-12)
         @test isapprox(diff_space, ref_diff_space, rtol=1e-12)
         out_of_place_eval, out_of_place_diff = EvalDiff(p, legendre_poly, pts)
         @test isapprox(out_of_place_eval, eval_space, rtol=1e-12)
         @test isapprox(out_of_place_diff, diff_space, rtol=1e-12)
+    end
+
+    @testset "Jacobi (allocations)" begin
+        jacobi_poly = JacobiPolynomial(0.5, 0.75)
+        eval_space = zeros(p+1, N_pts)
+        diff_space = zeros(p+1, N_pts)
+        EvalDiff!(eval_space, diff_space, jacobi_poly, pts)
+        @test 0 == @allocated(EvalDiff!(eval_space, diff_space, jacobi_poly, pts))
     end
 end

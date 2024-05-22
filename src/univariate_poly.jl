@@ -89,13 +89,16 @@ function EvalDiff!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U},
     diff_space[0+1,:] .= zero(U)
     deg == 0 && return
     lk, mk, ak, bk = poly.lk, poly.mk, poly.ak, poly.bk
-    eval_space[1+1,:] .= (mk(0)*x .- ak(0))/lk(0)
-    diff_space[1+1,:] .= convert(U,mk(0)/lk(0))
+    for j in eachindex(x)
+        eval_space[1+1,j] = muladd(mk(0), x[j], -ak(0))/lk(0)
+        diff_space[1+1,j] = convert(U,mk(0)/lk(0))
+    end
     for k in 1:deg-1
         idx = k+1
         for j in eachindex(x)
-            eval_space[idx+1,j] = (mk(k)*x[j] - ak(k))*eval_space[idx,j] - bk(k)*eval_space[idx-1,j]
-            diff_space[idx+1,j] = mk(k)*eval_space[idx,j] + (mk(k)*x[j] - ak(k))*diff_space[idx,j] - bk(k)*diff_space[idx-1,j]
+            pk_ = muladd(mk(k), x[j], -ak(k))
+            eval_space[idx+1,j] = muladd(pk_,   eval_space[idx,j], -bk(k)*eval_space[idx-1,j])
+            diff_space[idx+1,j] = muladd(mk(k), eval_space[idx,j], muladd(pk_, diff_space[idx,j], -bk(k)*diff_space[idx-1,j]))
             eval_space[idx+1,j] /= lk(k)
             diff_space[idx+1,j] /= lk(k)
         end
@@ -128,14 +131,16 @@ function EvalDiff!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U},
     deg == 0 && return
     ak, bk = poly.ak, poly.bk
 
-    eval_space[1+1,:] .= x .- ak(0)
-    diff_space[1+1,:] .= one(U)
+    for j in eachindex(x)
+        eval_space[1+1,j] = x[j] - ak(0)
+        diff_space[1+1,j] = one(U)
+    end
 
     for k in 1:deg-1
         idx = k+1
         for j in eachindex(x)
-            eval_space[idx+1,j] = (x[j] - ak(k))*eval_space[idx,j] - bk(k)*eval_space[idx-1,j]
-            diff_space[idx+1,j] = eval_space[idx,j] + (x[j] - ak(k))*diff_space[idx,j] - bk(k)*diff_space[idx-1,j]
+            eval_space[idx+1,j] = muladd(x[j] - ak(k), eval_space[idx,j], -bk(k)*eval_space[idx-1,j])
+            diff_space[idx+1,j] = muladd(x[j] - ak(k), diff_space[idx,j], muladd(-bk(k), diff_space[idx-1,j], eval_space[idx,j]))
         end
     end
 end
