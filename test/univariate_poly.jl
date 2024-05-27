@@ -231,3 +231,60 @@ end
         @test 0 == @allocated(EvalDiff2!(eval_space, diff_space, diff2_space, jacobi_poly, pts))
     end
 end
+
+@testset "Base cases and errors" begin
+    @testset "Base cases" begin
+        space = zeros(1, N_pts)
+        diff_space = similar(space)
+        diff2_space = similar(space)
+        Evaluate!(space, Monomials(), pts)
+        @test all(space .== 1.)
+
+        fill!(space, 1.284028)
+        EvalDiff!(space, diff_space, Monomials(), pts)
+        @test all(space .== 1.)
+        @test all(diff_space .== 0.)
+
+        fill!.([space, diff_space], (1.284028,))
+        EvalDiff2!(space, diff_space, diff2_space, Monomials(), pts)
+        @test all(space .== 1.)
+        @test all(diff_space .== 0.)
+        @test all(diff2_space .== 0.)
+
+        fill!.([space, diff_space, diff2_space], (1.284028,))
+        Evaluate!(space, LegendrePolynomial(), pts)
+        @test all(space .== 1.)
+
+        fill!(space, 1.284028)
+        EvalDiff!(space, diff_space, LegendrePolynomial(), pts)
+        @test all(space .== 1.)
+        @test all(diff_space .== 0.)
+
+        fill!.([space, diff_space], (1.284028,))
+        EvalDiff2!(space, diff_space, diff2_space, LegendrePolynomial(), pts)
+        @test all(space .== 1.)
+        @test all(diff_space .== 0.)
+        @test all(diff2_space .== 0.)
+    end
+
+    @testset "Errors" begin
+        pts = [1., 2.]
+        eval_space_right = zeros(1, 2)
+        eval_space_wrong = zeros(1, 1)
+        diff_space_right = zeros(1, 2)
+        diff_space_wrong = zeros(1, 1)
+        diff2_space_right = zeros(1, 2)
+        diff2_space_wrong = zeros(1, 1)
+        for basis in [Monomials(), LegendrePolynomial()]
+            @test_throws AssertionError Evaluate!(eval_space_wrong, basis, pts)
+            @test_throws AssertionError EvalDiff!(eval_space_right, diff_space_wrong, basis, pts)
+            @test_throws AssertionError EvalDiff!(eval_space_wrong, diff_space_right, basis, pts)
+            @test_throws AssertionError EvalDiff2!(eval_space_right, diff_space_right, diff2_space_wrong, basis, pts)
+            @test_throws AssertionError EvalDiff2!(eval_space_right, diff_space_wrong, diff2_space_right, basis, pts)
+            @test_throws AssertionError EvalDiff2!(eval_space_wrong, diff_space_right, diff2_space_right, basis, pts)
+        end
+        @test_throws AssertionError Evaluate(-1, Monomials(), pts)
+        @test_throws AssertionError EvalDiff(-1, Monomials(), pts)
+        @test_throws AssertionError EvalDiff2(-1, Monomials(), pts)
+    end
+end
