@@ -1,21 +1,30 @@
-export Evaluate, Evaluate!
-export EvalDiff, EvalDiff!
 export LegendrePolynomial, MonicLegendrePolynomial,
-       ProbabilistHermite, PhysicistHermite, JacobiPolynomial, MonicJacobiPolynomial
+       ProbabilistHermite, PhysicistHermite,
+       JacobiPolynomial, MonicJacobiPolynomial
 
-abstract type Polynomial end
+# Abstract type for univariate polynomials
+abstract type Polynomial <: UnivariateBasis end
 
-module Recurrence
-    @enum _Recurrence Lk Mk Ak Bk
-end
+"""
+Struct representing a _monic_ orthogonal polynomial family via three-term recurrence relation:
 
-# p_{k+1} = (x - a_k)p_k - b_kp_{k-1}
+```math
+p_{k+1} = (x - a_k)p_k - b_kp_{k-1}
+```
+"""
 struct MonicOrthogonalPolynomial{Ak,Bk} <: Polynomial
     ak::Ak
     bk::Bk
 end
 
-# L_kp_{k+1} = (m_kx - a_k)p_k - b_kp_{k-1}
+
+"""
+Struct representing an orthogonal polynomial family via three-term recurrence relation:
+
+```math
+L_kp_{k+1} = (m_kx - a_k)p_k - b_kp_{k-1}
+```
+"""
 struct OrthogonalPolynomial{Lk,Mk,Ak,Bk} <: Polynomial
     lk::Lk
     mk::Mk
@@ -25,6 +34,8 @@ end
 
 _ProbHermiteAk = Returns(0)
 _ProbHermiteBk = identity
+
+# Probabilist Hermite polynomials `He_k`, orthogonal under `exp(-x^2/2)`
 ProbabilistHermite() = MonicOrthogonalPolynomial(_ProbHermiteAk,_ProbHermiteBk)
 
 _PhysHermiteLk = Returns(1)
@@ -32,18 +43,26 @@ _PhysHermiteMk = Returns(2)
 _PhysHermiteAk = Returns(0)
 _PhysHermiteBk(k::Int) = 2k
 
+# Physicist Hermite polynomials `H_k`, orthogonal under `exp(-x^2)`
 PhysicistHermite() = OrthogonalPolynomial(_PhysHermiteLk,_PhysHermiteMk,_PhysHermiteAk,_PhysHermiteBk)
 
 _LegendreLk(k::Int) = k+1
 _LegendreMk(k::Int) = 2k+1
 _LegendreAk(k::Int) = 0
 _LegendreBk(k::Int) = k
+# Legendre polynomials `P_k`, orthogonal under `U[-1,1]`
 LegendrePolynomial() = OrthogonalPolynomial(_LegendreLk,_LegendreMk,_LegendreAk,_LegendreBk)
 
 _MonicLegendreAk = Returns(0.)
 _MonicLegendreBk(k::Int) = (k*k)/(4k*k-1.)
+# Monic Legendre polynomials `P_k`, orthogonal under `U[-1,1]`
 MonicLegendrePolynomial() = MonicOrthogonalPolynomial(_MonicLegendreAk,_MonicLegendreBk)
 
+"""
+    MonicJacobiPolynomial(α,β)
+
+Monic Jacobi polynomials `P^(α,β)_k`, orthogonal on `[-1,1]` with weight `(1-x)^α(1+x)^β`
+"""
 function MonicJacobiPolynomial(alpha::T,beta::T) where {T}
     alpha == 0. && beta == 0. && return MonicLegendrePolynomial()
 
@@ -52,6 +71,11 @@ function MonicJacobiPolynomial(alpha::T,beta::T) where {T}
     MonicOrthogonalPolynomial(Ak,Bk)
 end
 
+"""
+    JacobiPolynomial(α,β)
+
+Jacobi polynomials `P^(α,β)_k`, orthogonal on `[-1,1]` with weight `(1-x)^α(1+x)^β`
+"""
 function JacobiPolynomial(alpha::T,beta::T) where {T}
     alpha == 0. && beta == 0. && return LegendrePolynomial()
 
@@ -62,7 +86,6 @@ function JacobiPolynomial(alpha::T,beta::T) where {T}
     OrthogonalPolynomial(Lk, Mk, Ak, Bk)
 end
 
-# Evaluate the polynomial at x, space: matrix of size (d+1,N_pts) with max degree d
 function Evaluate!(space::AbstractMatrix{U}, poly::OrthogonalPolynomial,x::AbstractVector{U}) where {U}
     N,deg = length(x),size(space,1)-1
     @assert size(space,2) == N
@@ -83,6 +106,7 @@ function Evaluate!(space::AbstractMatrix{U}, poly::OrthogonalPolynomial,x::Abstr
             space[idx+1,j] /= lk(k)
         end
     end
+    nothing
 end
 
 function EvalDiff!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U}, poly::OrthogonalPolynomial, x::AbstractVector{U}) where {U}
@@ -113,7 +137,47 @@ function EvalDiff!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U},
     end
 end
 
-function Evaluate!(space::AbstractMatrix{U},poly::MonicOrthogonalPolynomial{Ak,Bk},x::AbstractVector{U}) where {Ak,Bk,U}
+function EvalDiff2!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U}, diff2_space::AbstractMatrix{U}, poly::OrthogonalPolynomial, x::AbstractVector{U}) where {U}
+    N,deg = length(x),size(eval_space,1)-1
+
+    @assert size(eval_space,2) == N "eval_space has $(size(eval_space,2)) columns, expected $N"
+    @assert size(diff_space,1) == deg+1 && size(diff_space,2) == N "diff_space size $(size(diff_space)), expected ($(deg+1),$N)"
+    @assert size(diff2_space,1) == deg+1 && size(diff2_space,2) == N "diff2_space size $(size(diff2_space)), expected ($(deg+1),$N)"
+    @assert deg >= 0 "Degree must be nonnegative"
+
+    if deg == 0
+        eval_space[0+1,:] .= one(U)
+        diff_space[0+1,:] .= zero(U)
+        diff2_space[0+1,:] .= zero(U)
+        return
+    end
+    lk, mk, ak, bk = poly.lk, poly.mk, poly.ak, poly.bk
+
+    @inbounds for j in eachindex(x)
+        eval_space[0+1,j] = one(U)
+        diff_space[0+1,j] = zero(U)
+        diff2_space[0+1,j] = zero(U)
+        eval_space[1+1,j] = muladd(mk(0), x[j], -ak(0))/lk(0)
+        diff_space[1+1,j] = mk(0)/lk(0)
+        diff2_space[1+1,j] = zero(U)
+
+        @simd for k in 1:deg-1
+            idx = k+1
+            @muladd pk_ = mk(k)*x[j] - ak(k)
+            @muladd eval_space[idx+1,j] = pk_*eval_space[idx,j] - bk(k)*eval_space[idx-1,j]
+            diff_space[idx+1,j] = muladd(mk(k), eval_space[idx,j], muladd(pk_, diff_space[idx,j], -bk(k)*diff_space[idx-1,j]))
+            diff2_space[idx+1,j] = muladd(2mk(k), diff_space[idx,j], muladd(pk_, diff2_space[idx,j], -bk(k)*diff2_space[idx-1,j]))
+
+            eval_space[idx+1,j] /= lk(k)
+            diff_space[idx+1,j] /= lk(k)
+            diff2_space[idx+1,j] /= lk(k)
+        end
+    end
+    nothing
+end
+
+function Evaluate!(space::AbstractMatrix{U},poly::MonicOrthogonalPolynomial,x::AbstractVector{U}) where {U}
+    # Evaluate a monic orthogonal polynomial; may be faster than the general case
     N,deg = length(x),size(space,1)-1
     @assert size(space,2) == N
     @assert deg >= 0
@@ -132,9 +196,11 @@ function Evaluate!(space::AbstractMatrix{U},poly::MonicOrthogonalPolynomial{Ak,B
             space[idx+1,j] = muladd(x[j] - ak(k), space[idx,j], -bk(k)*space[idx-1,j])
         end
     end
+    nothing
 end
 
-function EvalDiff!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U}, poly::MonicOrthogonalPolynomial{Ak,Bk}, x::AbstractVector{U}) where {Ak,Bk,U}
+function EvalDiff!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U}, poly::MonicOrthogonalPolynomial, x::AbstractVector{U}) where {U}
+    # Evaluate a monic orthogonal polynomial and its derivative; may be faster than the general case
     N,deg = length(x),size(eval_space,1)-1
     @assert size(eval_space,2) == N "eval_space has $(size(eval_space,2)) columns, expected $N"
     @assert size(diff_space,1) == deg+1 && size(diff_space,2) == N "diff_space size $(size(diff_space)), expected ($(deg+1),$N)"
@@ -156,21 +222,46 @@ function EvalDiff!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U},
 
         @simd for k in 1:deg-1
             idx = k+1
-            eval_space[idx+1,j] = muladd(x[j] - ak(k), eval_space[idx,j], -bk(k)*eval_space[idx-1,j])
-            diff_space[idx+1,j] = muladd(x[j] - ak(k), diff_space[idx,j], muladd(-bk(k), diff_space[idx-1,j], eval_space[idx,j]))
+            x_sub_a = x[j] - ak(k)
+            eval_space[idx+1,j] = muladd(x_sub_a, eval_space[idx,j], -bk(k)*eval_space[idx-1,j])
+            diff_space[idx+1,j] = muladd(x_sub_a, diff_space[idx,j], muladd(-bk(k), diff_space[idx-1,j], eval_space[idx,j]))
         end
     end
+    nothing
 end
 
-function Evaluate(max_degree::Int, poly::Polynomial, x::AbstractVector{U}) where {U}
-    space = zeros(U,max_degree+1,length(x))
-    Evaluate!(space,poly,x)
-    space
-end
+function EvalDiff2!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U}, diff2_space::AbstractMatrix{U}, poly::MonicOrthogonalPolynomial, x::AbstractVector{U}) where {U}
+    N,deg = length(x),size(eval_space,1)-1
+    @assert size(eval_space,2) == N "eval_space has $(size(eval_space,2)) columns, expected $N"
+    @assert size(diff_space,1) == deg+1 && size(diff_space,2) == N "diff_space size $(size(diff_space)), expected ($(deg+1),$N)"
+    @assert size(diff2_space,1) == deg+1 && size(diff2_space,2) == N "diff2_space size $(size(diff2_space)), expected ($(deg+1),$N)"
+    @assert deg >= 0 "Degree must be nonnegative"
 
-function EvalDiff(max_degree::Int, poly::Polynomial, x::AbstractVector{U}) where {U}
-    eval_space = zeros(U,max_degree+1,length(x))
-    diff_space = zeros(U,max_degree+1,length(x))
-    EvalDiff!(eval_space,diff_space,poly,x)
-    eval_space,diff_space
+    if deg == 0
+        eval_space[0+1,:] .= one(U)
+        diff_space[0+1,:] .= zero(U)
+        diff2_space[0+1,:] .= zero(U)
+        return
+    end
+
+    ak, bk = poly.ak, poly.bk
+
+    @inbounds for j in eachindex(x)
+        eval_space[0+1,j] = one(U)
+        diff_space[0+1,j] = zero(U)
+        diff2_space[0+1,j] = zero(U)
+
+        eval_space[1+1,j] = x[j] - ak(0)
+        diff_space[1+1,j] = one(U)
+        diff2_space[1+1,j] = zero(U)
+
+        @simd for k in 1:deg-1
+            idx = k+1
+            x_sub_a = x[j] - ak(k)
+            eval_space[idx+1,j] = muladd(x_sub_a, eval_space[idx,j], -bk(k)*eval_space[idx-1,j])
+            diff_space[idx+1,j] = muladd(x_sub_a, diff_space[idx,j], muladd(-bk(k), diff_space[idx-1,j], eval_space[idx,j]))
+            diff2_space[idx+1,j] = muladd(x_sub_a, diff2_space[idx,j], muladd(-bk(k), diff2_space[idx-1,j], 2*diff_space[idx,j]))
+        end
+    end
+    nothing
 end
