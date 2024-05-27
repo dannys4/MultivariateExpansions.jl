@@ -64,8 +64,7 @@ end
 end
 
 @inline function _gaspari_cohn_large(ra)
-    @muladd (((((1.0 / 12.0) * ra + (-0.5)) * ra + 0.625) * ra + (5.0 / 3.0)) * ra + (-5.0)) * ra + 4 +
-    (-2.0 / 3.0) / ra
+    @muladd (((((1.0 / 12.0) * ra + (-0.5)) * ra + 0.625) * ra + (5.0 / 3.0)) * ra + (-5.0)) * ra + 4 + (-2.0 / 3.0) / ra
     # (1/12)*(ra^5) - 0.5(ra^4) + 0.625(ra^3) + (5/3)(ra^2) - 5(ra) + 4 - (2/3) / ra
 end
 
@@ -94,9 +93,9 @@ function EvalDiff(m::GaspariCohn, x)
     x2 = x * m.input_scale
     ra = abs(x2)
     if ra < 1
-        return _gaspari_cohn_small(ra), _gaspari_cohn_diff_small(ra)
+        return _gaspari_cohn_small(ra), sign(x)*_gaspari_cohn_diff_small(ra)*m.input_scale
     elseif ra < 2
-        return _gaspari_cohn_large(ra), _gaspari_cohn_diff_large(ra)
+        return _gaspari_cohn_large(ra), sign(x)*_gaspari_cohn_diff_large(ra)*m.input_scale
     end
     0.0, 0.0
 end
@@ -105,9 +104,9 @@ function EvalDiff2(m::GaspariCohn, x)
     x2 = x * m.input_scale
     ra = abs(x2)
     if ra < 1
-        return _gaspari_cohn_small(ra), _gaspari_cohn_diff_small(ra), _gaspari_cohn_diff2_small(ra)
+        return _gaspari_cohn_small(ra), sign(x)*_gaspari_cohn_diff_small(ra)*m.input_scale, _gaspari_cohn_diff2_small(ra)*m.input_scale*m.input_scale
     elseif ra < 2
-        return _gaspari_cohn_large(ra), _gaspari_cohn_diff_large(ra), _gaspari_cohn_diff2_large(ra)
+        return _gaspari_cohn_large(ra), sign(x)*_gaspari_cohn_diff_large(ra)*m.input_scale, _gaspari_cohn_diff2_large(ra)*m.input_scale*m.input_scale
     end
     0.0, 0.0, 0.0
 end

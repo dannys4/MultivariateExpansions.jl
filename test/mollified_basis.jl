@@ -45,6 +45,35 @@ basis = JacobiPolynomial(0.75, 0.52)
         @test all(isapprox.(moll_diff_ratio, moll_diff_ratio[1], rtol=1e-9))
         @test all(isapprox.(moll_diff2_ratio, moll_diff2_ratio[1], rtol=1e-5))
     end
+
+    @testset "GaspariCohn" begin
+        pts = -5:0.1:5
+        bound = 3.
+        fd_delta = 1e-5
+        gc = GaspariCohn(bound)
+        eval_gc_ref = Evaluate.((gc,), pts)
+        @test all(eval_gc_ref[abs.(pts) .> bound] .== 0.)
+
+        eval_gc_ref_plus_fd = Evaluate.((gc,), pts .+ fd_delta)
+        eval_gc_ref_minus_fd = Evaluate.((gc,), pts .- fd_delta)
+        diff_gc_ref = (eval_gc_ref_plus_fd - eval_gc_ref_minus_fd) / (2fd_delta)
+        diff2_gc_ref = (eval_gc_ref_plus_fd - 2eval_gc_ref .+ eval_gc_ref_minus_fd) / (fd_delta^2)
+
+        eval_gc_diffs = EvalDiff.((gc,), pts)
+        eval_gc, diff_gc = first.(eval_gc_diffs), last.(eval_gc_diffs)
+        @test eval_gc ≈ eval_gc_ref atol=1e-14
+        @test diff_gc[abs.(pts) .< bound] ≈ diff_gc_ref[abs.(pts) .< bound] rtol=fd_delta
+        @test all(diff_gc[abs.(pts) .> bound] .== 0.)
+
+        eval_gc_diffs = EvalDiff2.((gc,), pts)
+        eval_gc, diff2_gc = first.(eval_gc_diffs), last.(eval_gc_diffs)
+        diff_gc = map(x->x[2], eval_gc_diffs)
+        @test eval_gc ≈ eval_gc_ref atol=1e-14
+        @test diff_gc[abs.(pts) .< bound] ≈ diff_gc_ref[abs.(pts) .< bound] rtol=fd_delta
+        @test all(diff_gc[abs.(pts) .> bound] .== 0.)
+        @test diff2_gc[abs.(pts) .< bound] ≈ diff2_gc_ref[abs.(pts) .< bound] rtol=fd_delta
+        @test all(diff2_gc[abs.(pts) .> bound] .== 0.)
+    end
 end
 
 @testset "Mollified basis evaluation" begin
@@ -78,19 +107,19 @@ end
 
         # Second derivatives
         diff2_space = zeros(p+1, N_pts)
-        # EvalDiff2!(eval_space, diff_space, diff2_space, basis, pts)
+        EvalDiff2!(eval_space, diff_space, diff2_space, basis, pts)
 
         diff2_space_ref = zeros(p+1, N_pts)
-        # EvalDiff2!(eval_space_ref, diff_space_ref, diff2_space_ref, basis, pts)
+        EvalDiff2!(eval_space_ref, diff_space_ref, diff2_space_ref, basis, pts)
 
         @test eval_space ≈ eval_space_ref atol=1e-14
         @test diff_space ≈ diff_space_ref atol=1e-14
         @test diff2_space ≈ diff2_space_ref atol=1e-14
 
-        # out_of_place_eval, out_of_place_diff, out_of_place_diff2 = EvalDiff2(p, basis, pts)
-        # @test out_of_place_eval ≈ eval_space atol=1e-14
-        # @test out_of_place_diff ≈ diff_space atol=1e-14
-        # @test out_of_place_diff2 ≈ diff2_space atol=1e-14
+        out_of_place_eval, out_of_place_diff, out_of_place_diff2 = EvalDiff2(p, basis, pts)
+        @test out_of_place_eval ≈ eval_space atol=1e-14
+        @test out_of_place_diff ≈ diff_space atol=1e-14
+        @test out_of_place_diff2 ≈ diff2_space atol=1e-14
     end
 
     @testset "SquaredExponential" begin

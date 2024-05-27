@@ -153,7 +153,7 @@ function EvalDiff2!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U}
     end
     lk, mk, ak, bk = poly.lk, poly.mk, poly.ak, poly.bk
 
-    for j in eachindex(x)
+    @inbounds for j in eachindex(x)
         eval_space[0+1,j] = one(U)
         diff_space[0+1,j] = zero(U)
         diff2_space[0+1,j] = zero(U)
@@ -161,7 +161,7 @@ function EvalDiff2!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U}
         diff_space[1+1,j] = mk(0)/lk(0)
         diff2_space[1+1,j] = zero(U)
 
-        for k in 1:deg-1
+        @simd for k in 1:deg-1
             idx = k+1
             @muladd pk_ = mk(k)*x[j] - ak(k)
             @muladd eval_space[idx+1,j] = pk_*eval_space[idx,j] - bk(k)*eval_space[idx-1,j]
@@ -246,7 +246,7 @@ function EvalDiff2!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U}
 
     ak, bk = poly.ak, poly.bk
 
-    for j in eachindex(x)
+    @inbounds for j in eachindex(x)
         eval_space[0+1,j] = one(U)
         diff_space[0+1,j] = zero(U)
         diff2_space[0+1,j] = zero(U)
@@ -255,7 +255,7 @@ function EvalDiff2!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U}
         diff_space[1+1,j] = one(U)
         diff2_space[1+1,j] = zero(U)
 
-        for k in 1:deg-1
+        @simd for k in 1:deg-1
             idx = k+1
             x_sub_a = x[j] - ak(k)
             eval_space[idx+1,j] = muladd(x_sub_a, eval_space[idx,j], -bk(k)*eval_space[idx-1,j])
