@@ -2,6 +2,9 @@ module MultivariateExpansions
 
 using MultiIndexing, LinearAlgebra
 
+# Univariate basis functions
+include("univariate_basis.jl")
+
 # Univariate polynomial families
 include("univariate_poly.jl")
 

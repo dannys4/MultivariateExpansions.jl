@@ -7,7 +7,11 @@ using Test, Random, MultiIndexing, Statistics
     end
 
     @testset "Univariate polynomials" begin
-        include("univariate_polynomials.jl")
+        include("univariate_poly.jl")
+    end
+
+    @testset "Univariate bases" begin
+        include("univariate_basis.jl")
     end
 
     @testset "Score matching" begin
