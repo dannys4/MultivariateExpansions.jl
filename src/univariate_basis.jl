@@ -1,6 +1,8 @@
 export Evaluate, Evaluate!
 export EvalDiff, EvalDiff!
+export EvalDiff2, EvalDiff2!
 export MollifiedBasis
+export SquaredExponential, GaspariCohn
 
 abstract type UnivariateBasis end
 
@@ -127,10 +129,10 @@ end
 function EvalDiff!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U},
         basis::MollifiedBasis{Start}, x::AbstractVector{U}) where {Start, U}
     EvalDiff!(eval_space, diff_space, basis.basis, x)
-    @inbounds for i in axes(eval_space, 2)
+    for i in axes(eval_space, 2)
         eval_i, diff_i = EvalDiff(basis.moll, x[i])
-        @simd for j in (Start + 1):size(eval_space, 1)
-            @muladd diff_space[j, i] = diff_space[j, i] * eval_i + eval_space[j, i] * diff_i
+        for j in Start+1:size(eval_space, 1)
+            diff_space[j, i] = diff_space[j, i] * eval_i + eval_space[j, i] * diff_i
             eval_space[j, i] *= eval_i
         end
     end
@@ -141,7 +143,7 @@ function EvalDiff2!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U}
     EvalDiff2!(eval_space, diff_space, diff2_space, basis.basis, x)
     @inbounds for i in axes(eval_space, 2)
         eval_i, diff_i, diff2_i = EvalDiff2(basis.moll, x[i])
-        @simd for j in (Start + 1):size(eval_space, 1)
+        @simd for j in Start:size(eval_space, 1)
             @muladd diff2_space[j, i] = diff2_space[j, i] * eval_i + 2 * diff_space[j, i] * diff_i + eval_space[j, i] * diff2_i
             @muladd diff_space[j, i] = diff_space[j, i] * eval_i + eval_space[j, i] * diff_i
             eval_space[j, i] *= eval_i
