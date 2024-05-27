@@ -114,7 +114,7 @@ end
 function Evaluate!(space::AbstractMatrix{U}, basis::MollifiedBasis{Start},
         x::AbstractVector{U}) where {Start, U}
     Evaluate!(space, basis.basis, x)
-    for i in axes(space, 2)
+    @inbounds for i in axes(space, 2)
         moll_i = Evaluate(basis.moll, x[i])
         space[(Start + 1):end, i] .*= moll_i
     end
@@ -123,9 +123,9 @@ end
 function EvalDiff!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U},
         basis::MollifiedBasis{Start}, x::AbstractVector{U}) where {Start, U}
     EvalDiff!(eval_space, diff_space, basis.basis, x)
-    for i in axes(eval_space, 2)
+    @inbounds for i in axes(eval_space, 2)
         eval_i, diff_i = EvalDiff(basis.moll, x[i])
-        for j in Start+1:size(eval_space, 1)
+        @simd for j in Start+1:size(eval_space, 1)
             diff_space[j, i] = diff_space[j, i] * eval_i + eval_space[j, i] * diff_i
             eval_space[j, i] *= eval_i
         end
@@ -135,9 +135,9 @@ end
 function EvalDiff2!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U},
         diff2_space::AbstractMatrix{U}, basis::MollifiedBasis{Start}, x::AbstractVector{U}) where {Start, U}
     EvalDiff2!(eval_space, diff_space, diff2_space, basis.basis, x)
-    for i in axes(eval_space, 2)
+    @inbounds for i in axes(eval_space, 2)
         eval_i, diff_i, diff2_i = EvalDiff2(basis.moll, x[i])
-        for j in Start+1:size(eval_space, 1)
+        @simd for j in Start+1:size(eval_space, 1)
             @muladd diff2_space[j, i] = diff2_space[j, i] * eval_i + 2 * diff_space[j, i] * diff_i + eval_space[j, i] * diff2_i
             @muladd diff_space[j, i] = diff_space[j, i] * eval_i + eval_space[j, i] * diff_i
             eval_space[j, i] *= eval_i
