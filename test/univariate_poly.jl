@@ -77,6 +77,23 @@ pts = 2rand(rng, N_pts) .- 1
             @test isapprox(space[k,:], exact_prob_hermite_polys[k].(pts), rtol=1e-12)
         end
     end
+
+    @testset "Physicist Hermite Polynomials" begin
+        exact_phys_hermite_polys = [
+            Returns(1.),
+            x->2x,
+            x->4x^2 - 2,
+            x->8x^3 - 12x,
+            x->16x^4 - 48x^2 + 12,
+            x->32x^5 - 160x^3 + 120x
+        ]
+        phys_hermite_poly = PhysicistHermite()
+        space = zeros(p+1, N_pts)
+        Evaluate!(space, phys_hermite_poly, pts)
+        for k in eachindex(exact_phys_hermite_polys)
+            @test isapprox(space[k,:], exact_phys_hermite_polys[k].(pts), rtol=1e-12)
+        end
+    end
 end
 
 @testset "Polynomial Derivatives" begin
