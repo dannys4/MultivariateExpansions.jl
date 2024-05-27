@@ -1,6 +1,6 @@
 module MultivariateExpansions
 
-using MultiIndexing, LinearAlgebra
+using MultiIndexing, LinearAlgebra, MuladdMacro
 
 # Univariate basis functions
 include("univariate_basis.jl")

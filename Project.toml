@@ -5,6 +5,7 @@ version = "1.0.5"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+MuladdMacro = "46d2c3a1-f734-5fdb-9937-b9b9aeba4221"
 MultiIndexing = "b97ecbdf-1535-430e-a7c7-b5702749f368"
 
 [compat]
