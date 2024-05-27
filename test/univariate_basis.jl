@@ -48,7 +48,23 @@ basis = JacobiPolynomial(0.75, 0.52)
 end
 
 @testset "Basis evaluation" begin
-    eval_space_ref, diff_space_ref = EvalDiff(p, basis, pts)
+    eval_space_ref = Matrix{Float64}(undef, p+1, N_pts)
+    diff_space_ref = similar(eval_space_ref)
+    diff2_space_ref = similar(eval_space_ref)
+    EvalDiff2!(eval_space_ref, diff_space_ref, diff2_space_ref, basis, pts)
+    @testset "Out-of-place evaluation" begin
+        eval_space = Evaluate(p, basis, pts)
+        @test eval_space ≈ eval_space_ref atol=1e-14
+
+        eval_space, diff_space = EvalDiff(p, basis, pts)
+        @test eval_space ≈ eval_space_ref atol=1e-14
+        @test diff_space ≈ diff_space_ref atol=1e-14
+
+        eval_space, diff_space, diff2_space = EvalDiff2(p, basis, pts)
+        @test eval_space ≈ eval_space_ref atol=1e-14
+        @test diff_space ≈ diff_space_ref atol=1e-14
+        @test diff2_space ≈ diff2_space_ref atol=1e-14
+    end
     @testset "No mollification" begin
         # Evaluation
         moll_basis = MollifiedBasis(0, basis, NoMollification())

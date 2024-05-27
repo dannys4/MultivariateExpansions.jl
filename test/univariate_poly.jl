@@ -11,8 +11,6 @@ pts = 2rand(rng, N_pts) .- 1
         for k in 0:p
             @test isapprox(space[k+1,:], pts.^k, atol=1e-12)
         end
-        out_of_place = Evaluate(p, monomials, pts)
-        @test isapprox(out_of_place, space, atol=1e-12)
     end
 
     @testset "Legendre Polynomials" begin
@@ -36,8 +34,6 @@ pts = 2rand(rng, N_pts) .- 1
             @test isapprox(space[k,:], exact_legendre_polys[k].(pts), rtol=1e-12)
             @test isapprox(monic_space[k,:], exact_legendre_polys[k].(pts)/legendre_lead_coeffs[k], rtol=1e-12)
         end
-        out_of_place = Evaluate(p, monic_legendre_poly, pts)
-        @test isapprox(out_of_place, monic_space, rtol=1e-12)
     end
 
     @testset "Jacobi Polynomials" begin
@@ -62,8 +58,6 @@ pts = 2rand(rng, N_pts) .- 1
                 @test isapprox(space[k,:], exact_jacobi_polys[k].(pts), rtol=1e-12)
                 @test isapprox(monic_space[k,:], exact_jacobi_polys[k].(pts)/jacobi_lead_coeffs[k], rtol=1e-6)
             end
-            out_of_place = Evaluate(p, jacobi_poly, pts)
-            @test isapprox(out_of_place, space, rtol=1e-12)
         end
     end
 
@@ -82,8 +76,6 @@ pts = 2rand(rng, N_pts) .- 1
         for k in eachindex(exact_prob_hermite_polys)
             @test isapprox(space[k,:], exact_prob_hermite_polys[k].(pts), rtol=1e-12)
         end
-        out_of_place = Evaluate(p, prob_hermite_poly, pts)
-        @test isapprox(out_of_place, space, rtol=1e-12)
     end
 end
 
@@ -100,9 +92,6 @@ end
             # k - 1 because k corresponds to the power + 1
             @test isapprox(diff_space[k,:], (k == 1 ? zeros(N_pts) : (k-1)*ref_eval_space[k-1,:]), atol=1e-12)
         end
-        out_of_place_eval, out_of_place_diff = EvalDiff(p, monomials, pts)
-        @test isapprox(out_of_place_eval, eval_space, atol=1e-12)
-        @test isapprox(out_of_place_diff, diff_space, atol=1e-12)
     end
 
     @testset "ProbabilistHermite" begin
@@ -120,10 +109,6 @@ end
         @test isapprox(diff_space, ref_diff_space, rtol=1e-12)
 
         @test 0 == @allocated(EvalDiff!(eval_space, diff_space, prob_hermite_poly, pts))
-
-        out_of_place_eval, out_of_place_diff = EvalDiff(p, prob_hermite_poly, pts)
-        @test isapprox(out_of_place_eval, eval_space, rtol=1e-12)
-        @test isapprox(out_of_place_diff, diff_space, rtol=1e-12)
     end
 
     # Use identity from https://math.stackexchange.com/questions/4751256/first-derivative-of-legendre-polynomial
@@ -144,16 +129,105 @@ end
 
         @test isapprox(eval_space, ref_eval_space, rtol=1e-12)
         @test isapprox(diff_space, ref_diff_space, rtol=1e-12)
-        out_of_place_eval, out_of_place_diff = EvalDiff(p, legendre_poly, pts)
-        @test isapprox(out_of_place_eval, eval_space, rtol=1e-12)
-        @test isapprox(out_of_place_diff, diff_space, rtol=1e-12)
+    end
+
+    @testset "Jacobi" begin
+        jacobi_poly = JacobiPolynomial(0.5, 0.75)
+        fd_delta = 1e-5
+        eval_space_ref = Evaluate(p, jacobi_poly, pts)
+        eval_space_ref_fd = Evaluate(p, jacobi_poly, pts .+ fd_delta)
+        diff_space_ref = (eval_space_ref_fd - eval_space_ref)/fd_delta
+        eval_space = zeros(p+1, N_pts)
+        diff_space = zeros(p+1, N_pts)
+        EvalDiff!(eval_space, diff_space, jacobi_poly, pts)
+
+        @test isapprox(eval_space, eval_space_ref, rtol=1e-12)
+        @test isapprox(diff_space, diff_space_ref, rtol=10fd_delta)
+
+        @test 0 == @allocated(EvalDiff!(eval_space, diff_space, jacobi_poly, pts))
+    end
+end
+
+@testset "Polynomial Second Derivatives" begin
+    @testset "Monomials" begin
+        monomials = MultivariateExpansions.MonicOrthogonalPolynomial(Returns(0.),Returns(0.))
+        ref_eval_space = zeros(p+1, N_pts)
+        Evaluate!(ref_eval_space, monomials, pts)
+        eval_space = zeros(p+1, N_pts)
+        diff_space = zeros(p+1, N_pts)
+        diff2_space = zeros(p+1, N_pts)
+        EvalDiff2!(eval_space, diff_space, diff2_space, monomials, pts)
+        for k in 1:p+1
+            @test isapprox(eval_space[k,:], ref_eval_space[k,:], atol=1e-12)
+            # k - 1 because k corresponds to the power + 1
+            @test isapprox(diff_space[k,:], (k == 1 ? zeros(N_pts) : (k-1)*ref_eval_space[k-1,:]), atol=1e-12)
+            @test isapprox(diff2_space[k,:], (k <= 2 ? zeros(N_pts) : (k-1)*(k-2)*ref_eval_space[k-2,:]), atol=1e-12)
+        end
+    end
+
+    @testset "ProbabilistHermite" begin
+        prob_hermite_poly = ProbabilistHermite()
+        ref_eval_space = zeros(p+1, N_pts)
+        Evaluate!(ref_eval_space, prob_hermite_poly, pts)
+        ref_diff_space = zeros(p+1, N_pts)
+        ref_diff2_space = zeros(p+1, N_pts)
+        for k in 2:p+1
+            ref_diff_space[k,:] = (k-1)*ref_eval_space[k-1,:]
+            k > 2 && (ref_diff2_space[k,:] = (k-1)*(k-2)*ref_eval_space[k-2,:])
+        end
+        eval_space = zeros(p+1, N_pts)
+        diff_space = zeros(p+1, N_pts)
+        diff2_space = zeros(p+1, N_pts)
+        EvalDiff2!(eval_space, diff_space, diff2_space, prob_hermite_poly, pts)
+        @test isapprox(eval_space, ref_eval_space, rtol=1e-12)
+        @test isapprox(diff_space, ref_diff_space, rtol=1e-12)
+
+        @test 0 == @allocated(EvalDiff2!(eval_space, diff_space, diff2_space, prob_hermite_poly, pts))
+    end
+
+    # Use identity from https://math.stackexchange.com/questions/4751256/first-derivative-of-legendre-polynomial
+    @testset "Legendre" begin
+        legendre_poly = LegendrePolynomial()
+        diff_legendre = (x,n,p_n,p_nm1) -> n*(p_nm1 - x*p_n)/(1-x^2)
+        diff2_legendre = (x,n,p_n,dp_n,dp_nm1) -> (n*(dp_nm1 - x*dp_n - p_n) + 2x*dp_n)/(1-x^2)
+        ref_eval_space = zeros(p+1, N_pts)
+        Evaluate!(ref_eval_space, legendre_poly, pts)
+        ref_diff_space = zeros(p+1, N_pts)
+        ref_diff2_space = zeros(p+1, N_pts)
+        for k in 2:p+1
+            ref_diff_space[k,:] = diff_legendre.(pts, k-1, ref_eval_space[k,:], ref_eval_space[k-1,:])
+            k > 2 && (ref_diff2_space[k,:] = diff2_legendre.(pts, k-1, ref_eval_space[k,:], ref_diff_space[k,:], ref_diff_space[k-1,:]))
+        end
+        eval_space = zeros(p+1, N_pts)
+        diff_space = zeros(p+1, N_pts)
+        diff2_space = zeros(p+1, N_pts)
+        EvalDiff2!(eval_space, diff_space, diff2_space, legendre_poly, pts)
+
+        @test isapprox(eval_space, ref_eval_space, rtol=1e-12)
+        @test isapprox(diff_space, ref_diff_space, rtol=1e-12)
+        @test isapprox(diff2_space, ref_diff2_space, rtol=1e-12)
+
+        @test 0 == @allocated(EvalDiff2!(eval_space, diff_space, diff2_space, legendre_poly, pts))
     end
 
     @testset "Jacobi (allocations)" begin
         jacobi_poly = JacobiPolynomial(0.5, 0.75)
-        eval_space = zeros(p+1, N_pts)
-        diff_space = zeros(p+1, N_pts)
-        EvalDiff!(eval_space, diff_space, jacobi_poly, pts)
-        @test 0 == @allocated(EvalDiff!(eval_space, diff_space, jacobi_poly, pts))
+
+        fd_delta = 1e-5
+        eval_ref, diff_ref = EvalDiff(p, jacobi_poly, pts)
+        _, diff_ref_fd = EvalDiff(p, jacobi_poly, pts .+ fd_delta)
+        diff2_ref = (diff_ref_fd - diff_ref)/fd_delta
+
+        eval_space = Matrix{Float64}(undef, p+1, N_pts)
+        diff_space = similar(eval_space)
+        diff2_space = similar(eval_space)
+
+        EvalDiff2!(eval_space, diff_space, diff2_space, jacobi_poly, pts)
+
+        @test isapprox(eval_space, eval_ref, rtol=1e-12)
+        @test isapprox(diff_space, diff_ref, rtol=1e-12)
+        @test isapprox(diff2_space, diff2_ref, rtol=10fd_delta)
+
+        @test 0 == @allocated(EvalDiff2!(eval_space, diff_space, diff2_space, jacobi_poly, pts))
     end
 end

@@ -186,8 +186,47 @@ function EvalDiff!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U},
     end
 end
 
+function EvalDiff2!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U}, diff2_space::AbstractMatrix{U}, poly::OrthogonalPolynomial, x::AbstractVector{U}) where {U}
+    N,deg = length(x),size(eval_space,1)-1
+
+    @assert size(eval_space,2) == N "eval_space has $(size(eval_space,2)) columns, expected $N"
+    @assert size(diff_space,1) == deg+1 && size(diff_space,2) == N "diff_space size $(size(diff_space)), expected ($(deg+1),$N)"
+    @assert size(diff2_space,1) == deg+1 && size(diff2_space,2) == N "diff2_space size $(size(diff2_space)), expected ($(deg+1),$N)"
+    @assert deg >= 0 "Degree must be nonnegative"
+
+    if deg == 0
+        eval_space[0+1,:] .= one(U)
+        diff_space[0+1,:] .= zero(U)
+        diff2_space[0+1,:] .= zero(U)
+        return
+    end
+    lk, mk, ak, bk = poly.lk, poly.mk, poly.ak, poly.bk
+
+    for j in eachindex(x)
+        eval_space[0+1,j] = one(U)
+        diff_space[0+1,j] = zero(U)
+        diff2_space[0+1,j] = zero(U)
+        eval_space[1+1,j] = muladd(mk(0), x[j], -ak(0))/lk(0)
+        diff_space[1+1,j] = mk(0)/lk(0)
+        diff2_space[1+1,j] = zero(U)
+
+        for k in 1:deg-1
+            idx = k+1
+            @muladd pk_ = mk(k)*x[j] - ak(k)
+            @muladd eval_space[idx+1,j] = pk_*eval_space[idx,j] - bk(k)*eval_space[idx-1,j]
+            diff_space[idx+1,j] = muladd(mk(k), eval_space[idx,j], muladd(pk_, diff_space[idx,j], -bk(k)*diff_space[idx-1,j]))
+            diff2_space[idx+1,j] = muladd(2mk(k), diff_space[idx,j], muladd(pk_, diff2_space[idx,j], -bk(k)*diff2_space[idx-1,j]))
+
+            eval_space[idx+1,j] /= lk(k)
+            diff_space[idx+1,j] /= lk(k)
+            diff2_space[idx+1,j] /= lk(k)
+        end
+    end
+    nothing
+end
+
 # Evaluate a monic orthogonal polynomial; may be faster than the general case
-function Evaluate!(space::AbstractMatrix{U},poly::MonicOrthogonalPolynomial{Ak,Bk},x::AbstractVector{U}) where {Ak,Bk,U}
+function Evaluate!(space::AbstractMatrix{U},poly::MonicOrthogonalPolynomial,x::AbstractVector{U}) where {U}
     N,deg = length(x),size(space,1)-1
     @assert size(space,2) == N
     @assert deg >= 0
@@ -209,7 +248,7 @@ function Evaluate!(space::AbstractMatrix{U},poly::MonicOrthogonalPolynomial{Ak,B
 end
 
 # Evaluate a monic orthogonal polynomial and its derivative; may be faster than the general case
-function EvalDiff!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U}, poly::MonicOrthogonalPolynomial{Ak,Bk}, x::AbstractVector{U}) where {Ak,Bk,U}
+function EvalDiff!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U}, poly::MonicOrthogonalPolynomial, x::AbstractVector{U}) where {U}
     N,deg = length(x),size(eval_space,1)-1
     @assert size(eval_space,2) == N "eval_space has $(size(eval_space,2)) columns, expected $N"
     @assert size(diff_space,1) == deg+1 && size(diff_space,2) == N "diff_space size $(size(diff_space)), expected ($(deg+1),$N)"
@@ -231,9 +270,45 @@ function EvalDiff!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U},
 
         @simd for k in 1:deg-1
             idx = k+1
-            eval_space[idx+1,j] = muladd(x[j] - ak(k), eval_space[idx,j], -bk(k)*eval_space[idx-1,j])
-            diff_space[idx+1,j] = muladd(x[j] - ak(k), diff_space[idx,j], muladd(-bk(k), diff_space[idx-1,j], eval_space[idx,j]))
+            x_sub_a = x[j] - ak(k)
+            eval_space[idx+1,j] = muladd(x_sub_a, eval_space[idx,j], -bk(k)*eval_space[idx-1,j])
+            diff_space[idx+1,j] = muladd(x_sub_a, diff_space[idx,j], muladd(-bk(k), diff_space[idx-1,j], eval_space[idx,j]))
         end
     end
 end
 
+function EvalDiff2!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U}, diff2_space::AbstractMatrix{U}, poly::MonicOrthogonalPolynomial, x::AbstractVector{U}) where {U}
+    N,deg = length(x),size(eval_space,1)-1
+    @assert size(eval_space,2) == N "eval_space has $(size(eval_space,2)) columns, expected $N"
+    @assert size(diff_space,1) == deg+1 && size(diff_space,2) == N "diff_space size $(size(diff_space)), expected ($(deg+1),$N)"
+    @assert size(diff2_space,1) == deg+1 && size(diff2_space,2) == N "diff2_space size $(size(diff2_space)), expected ($(deg+1),$N)"
+    @assert deg >= 0 "Degree must be nonnegative"
+
+    if deg == 0
+        eval_space[0+1,:] .= one(U)
+        diff_space[0+1,:] .= zero(U)
+        diff2_space[0+1,:] .= zero(U)
+        return
+    end
+
+    ak, bk = poly.ak, poly.bk
+
+    for j in eachindex(x)
+        eval_space[0+1,j] = one(U)
+        diff_space[0+1,j] = zero(U)
+        diff2_space[0+1,j] = zero(U)
+
+        eval_space[1+1,j] = x[j] - ak(0)
+        diff_space[1+1,j] = one(U)
+        diff2_space[1+1,j] = zero(U)
+
+        for k in 1:deg-1
+            idx = k+1
+            x_sub_a = x[j] - ak(k)
+            eval_space[idx+1,j] = muladd(x_sub_a, eval_space[idx,j], -bk(k)*eval_space[idx-1,j])
+            diff_space[idx+1,j] = muladd(x_sub_a, diff_space[idx,j], muladd(-bk(k), diff_space[idx-1,j], eval_space[idx,j]))
+            diff2_space[idx+1,j] = muladd(x_sub_a, diff2_space[idx,j], muladd(-bk(k), diff2_space[idx-1,j], 2*diff_space[idx,j]))
+        end
+    end
+    nothing
+end

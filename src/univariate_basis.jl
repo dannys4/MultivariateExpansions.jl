@@ -129,9 +129,9 @@ end
 function EvalDiff!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U},
         basis::MollifiedBasis{Start}, x::AbstractVector{U}) where {Start, U}
     EvalDiff!(eval_space, diff_space, basis.basis, x)
-    for i in axes(eval_space, 2)
+    @inbounds for i in axes(eval_space, 2)
         eval_i, diff_i = EvalDiff(basis.moll, x[i])
-        for j in Start+1:size(eval_space, 1)
+        @simd for j in Start+1:size(eval_space, 1)
             diff_space[j, i] = diff_space[j, i] * eval_i + eval_space[j, i] * diff_i
             eval_space[j, i] *= eval_i
         end
@@ -180,8 +180,7 @@ Evaluate the univariate basis `basis` and its derivative at `x` and return the r
 
 # Example
 ```jldoctest
-julia> eval_space, diff_space = EvalDiff(2, LegendrePolynomial(), [0.5, 0.75])
-([1.0 1.0; 0.5 0.75; -0.125 0.34375], [0.0 0.0; 1.0 1.0; 1.5 2.25])
+julia> eval_space, diff_space = EvalDiff(2, LegendrePolynomial(), [0.5, 0.75]);
 
 julia> eval_space
 3×2 Matrix{Float64}:
@@ -203,4 +202,42 @@ function EvalDiff(max_degree::Int, basis::UnivariateBasis, x::AbstractVector{U})
     diff_space = zeros(U, max_degree + 1, length(x))
     EvalDiff!(eval_space, diff_space, basis, x)
     eval_space, diff_space
+end
+
+"""
+    EvalDiff2(max_degree, basis, x)
+
+Evaluate the univariate basis `basis` and its first two derivatives at `x` and return the results.
+
+# Example
+```jldoctest
+julia> eval_space, diff_space, diff2_space = EvalDiff2(2, LegendrePolynomial(), [0.5, 0.75]);
+
+julia> eval_space
+3×2 Matrix{Float64}:
+  1.0    1.0
+  0.5    0.75
+ -0.125  0.34375
+
+julia> diff_space
+3×2 Matrix{Float64}:
+ 0.0  0.0
+ 1.0  1.0
+ 1.5  2.25
+
+julia> diff2_space
+3×2 Matrix{Float64}:
+ 0.0  0.0
+ 0.0  0.0
+ 1.5  2.25
+```
+
+See also: [`EvalDiff2!`](@ref)
+"""
+function EvalDiff2(max_degree::Int, basis::UnivariateBasis, x::AbstractVector{U}) where {U}
+    eval_space = zeros(U, max_degree + 1, length(x))
+    diff_space = zeros(U, max_degree + 1, length(x))
+    diff2_space = zeros(U, max_degree + 1, length(x))
+    EvalDiff2!(eval_space, diff_space, diff2_space, basis, x)
+    eval_space, diff_space, diff2_space
 end
