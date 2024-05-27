@@ -88,38 +88,21 @@ end
 
         eval_space = zeros(p+1, N_pts)
         Evaluate!(eval_space, moll_basis, pts)
-
         @test eval_space ≈ eval_space_ref atol=1e-14
-
-        out_of_place_eval = Evaluate(p, basis, pts)
-        @test out_of_place_eval ≈ eval_space atol=1e-14
 
         # Derivatives
         diff_space = zeros(p+1, N_pts)
-        EvalDiff!(eval_space, diff_space, basis, pts)
-
+        EvalDiff!(eval_space, diff_space, moll_basis, pts)
         @test eval_space ≈ eval_space_ref atol=1e-14
         @test diff_space ≈ diff_space_ref atol=1e-14
 
-        out_of_place_eval, out_of_place_diff = EvalDiff(p, basis, pts)
-        @test out_of_place_eval ≈ eval_space atol=1e-14
-        @test out_of_place_diff ≈ diff_space atol=1e-14
-
         # Second derivatives
         diff2_space = zeros(p+1, N_pts)
-        EvalDiff2!(eval_space, diff_space, diff2_space, basis, pts)
-
-        diff2_space_ref = zeros(p+1, N_pts)
-        EvalDiff2!(eval_space_ref, diff_space_ref, diff2_space_ref, basis, pts)
+        EvalDiff2!(eval_space, diff_space, diff2_space, moll_basis, pts)
 
         @test eval_space ≈ eval_space_ref atol=1e-14
         @test diff_space ≈ diff_space_ref atol=1e-14
         @test diff2_space ≈ diff2_space_ref atol=1e-14
-
-        out_of_place_eval, out_of_place_diff, out_of_place_diff2 = EvalDiff2(p, basis, pts)
-        @test out_of_place_eval ≈ eval_space atol=1e-14
-        @test out_of_place_diff ≈ diff_space atol=1e-14
-        @test out_of_place_diff2 ≈ diff2_space atol=1e-14
     end
 
     @testset "SquaredExponential" begin
@@ -137,14 +120,12 @@ end
 
         @test ratio ≈ repeat(moll_eval',p+1-start_degree,1) atol=1e-14
 
-        out_of_place_eval = Evaluate(p, moll_basis, pts)
-        @test out_of_place_eval ≈ eval_space atol=1e-14
-
         # Derivatives
+        eval_space_moll = copy(eval_space)
         diff_space = zeros(p+1, N_pts)
         EvalDiff!(eval_space, diff_space, moll_basis, pts)
 
-        @test eval_space[1:start_degree,:] ≈ eval_space_ref[1:start_degree,:] atol=1e-14
+        @test eval_space ≈ eval_space_moll atol=1e-14
         @test diff_space[1:start_degree,:] ≈ diff_space_ref[1:start_degree,:] atol=1e-14
 
         fd_delta = 1e-5
@@ -153,5 +134,17 @@ end
         diff_space_fd = (eval_moll_plus_fd - eval_moll_minus_fd) / (2fd_delta)
 
         @test diff_space ≈ diff_space_fd rtol=10fd_delta
+
+        # Second derivative
+        diff_space_moll = copy(diff_space)
+        diff2_space = zeros(p+1, N_pts)
+        EvalDiff2!(eval_space, diff_space, diff2_space, moll_basis, pts)
+
+        @test eval_space ≈ eval_space_moll atol=1e-14
+        @test diff_space ≈ diff_space_moll atol=1e-14
+        @test diff2_space[1:start_degree,:] ≈ diff2_space_ref[1:start_degree,:] atol=1e-14
+
+        diff2_space_fd = (eval_moll_plus_fd .+ eval_moll_minus_fd .- 2eval_space_moll) / (fd_delta^2)
+        @test diff2_space ≈ diff2_space_fd rtol=10fd_delta
     end
 end
