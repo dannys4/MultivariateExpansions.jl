@@ -5,7 +5,7 @@ pts = 2rand(rng, N_pts) .- 1
 @testset "Polynomial Evaluation" begin
     @testset "Monomial Eval" begin
         # Monomial is x^{k+1} = (x-0)x^k + 0x^{k-1}
-        monomials = MultivariateExpansions.MonicOrthogonalPolynomial(Returns(0.),Returns(0.))
+        monomials = Monomials()
         space = zeros(p+1, N_pts)
         Evaluate!(space, monomials, pts)
         for k in 0:p

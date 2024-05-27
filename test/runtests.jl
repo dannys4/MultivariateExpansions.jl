@@ -1,6 +1,8 @@
 using MultivariateExpansions
 using Test, Random, MultiIndexing, Statistics
 
+Monomials() = MultivariateExpansions.MonicOrthogonalPolynomial(Returns(0.),Returns(0.))
+
 @testset "MultivariateExpansions.jl" begin
     @testset "Generic multivariate polynomial evaluation" begin
         include("polynomial_assembly.jl")
