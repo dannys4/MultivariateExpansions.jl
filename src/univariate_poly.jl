@@ -86,27 +86,6 @@ function JacobiPolynomial(alpha::T,beta::T) where {T}
     OrthogonalPolynomial(Lk, Mk, Ak, Bk)
 end
 
-# Evaluate the polynomial at x, space: matrix of size (d+1,N_pts) with max degree d
-"""
-    Evaluate!(space, poly, x)
-
-Evaluate the polynomial `poly` at `x` and store the result in `space`.
-
-# Example
-```jldoctest
-julia> space = zeros(3,2);
-
-julia> Evaluate!(space, LegendrePolynomial(), [0.5, 0.75])
-
-julia> space
-3×2 Matrix{Float64}:
-  1.0    1.0
-  0.5    0.75
- -0.125  0.34375
-```
-
-See also: [`Evaluate`](@ref)
-"""
 function Evaluate!(space::AbstractMatrix{U}, poly::OrthogonalPolynomial,x::AbstractVector{U}) where {U}
     N,deg = length(x),size(space,1)-1
     @assert size(space,2) == N
@@ -130,34 +109,6 @@ function Evaluate!(space::AbstractMatrix{U}, poly::OrthogonalPolynomial,x::Abstr
     nothing
 end
 
-"""
-    EvalDiff!(eval_space, diff_space, poly, x)
-
-Evaluate the polynomial `poly` and its derivative at `x` and store the result in `eval_space` and `diff_space`, respectively.
-
-# Example
-```jldoctest
-julia> eval_space = zeros(3,2);
-
-julia> diff_space = zeros(3,2);
-
-julia> EvalDiff!(eval_space, diff_space, LegendrePolynomial(), [0.5, 0.75])
-
-julia> eval_space
-3×2 Matrix{Float64}:
-  1.0    1.0
-  0.5    0.75
- -0.125  0.34375
-
-julia> diff_space
-3×2 Matrix{Float64}:
- 0.0  0.0
- 1.0  1.0
- 1.5  2.25
-```
-
-See also: [`EvalDiff`](@ref)
-"""
 function EvalDiff!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U}, poly::OrthogonalPolynomial, x::AbstractVector{U}) where {U}
     N,deg = length(x),size(eval_space,1)-1
     @assert size(eval_space,2) == N "eval_space has $(size(eval_space,2)) columns, expected $N"
@@ -225,8 +176,8 @@ function EvalDiff2!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U}
     nothing
 end
 
-# Evaluate a monic orthogonal polynomial; may be faster than the general case
 function Evaluate!(space::AbstractMatrix{U},poly::MonicOrthogonalPolynomial,x::AbstractVector{U}) where {U}
+    # Evaluate a monic orthogonal polynomial; may be faster than the general case
     N,deg = length(x),size(space,1)-1
     @assert size(space,2) == N
     @assert deg >= 0
@@ -245,10 +196,11 @@ function Evaluate!(space::AbstractMatrix{U},poly::MonicOrthogonalPolynomial,x::A
             space[idx+1,j] = muladd(x[j] - ak(k), space[idx,j], -bk(k)*space[idx-1,j])
         end
     end
+    nothing
 end
 
-# Evaluate a monic orthogonal polynomial and its derivative; may be faster than the general case
 function EvalDiff!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U}, poly::MonicOrthogonalPolynomial, x::AbstractVector{U}) where {U}
+    # Evaluate a monic orthogonal polynomial and its derivative; may be faster than the general case
     N,deg = length(x),size(eval_space,1)-1
     @assert size(eval_space,2) == N "eval_space has $(size(eval_space,2)) columns, expected $N"
     @assert size(diff_space,1) == deg+1 && size(diff_space,2) == N "diff_space size $(size(diff_space)), expected ($(deg+1),$N)"
@@ -275,6 +227,7 @@ function EvalDiff!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U},
             diff_space[idx+1,j] = muladd(x_sub_a, diff_space[idx,j], muladd(-bk(k), diff_space[idx-1,j], eval_space[idx,j]))
         end
     end
+    nothing
 end
 
 function EvalDiff2!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U}, diff2_space::AbstractMatrix{U}, poly::MonicOrthogonalPolynomial, x::AbstractVector{U}) where {U}

@@ -16,6 +16,10 @@ Monomials() = MultivariateExpansions.MonicOrthogonalPolynomial(Returns(0.),Retur
         include("univariate_basis.jl")
     end
 
+    @testset "Mollified basis" begin
+        include("mollified_basis.jl")
+    end
+
     @testset "Score matching" begin
         include("score.jl")
     end
