@@ -124,7 +124,7 @@ Evaluate all univariate bases and their first two derivatives associated with a 
 
 See also [`EvalDiff2!`](@ref).
 """
-function EvalDiff2(p::NTuple{Int}, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
+function EvalDiff2(p::NTuple{N,Int}, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
     eval_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 2)), N)
     diff_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 2)), N)
     diff2_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 2)), N)

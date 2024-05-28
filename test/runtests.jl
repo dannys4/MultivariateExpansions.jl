@@ -4,10 +4,6 @@ using Test, Random, MultiIndexing, Statistics
 Monomials() = MultivariateExpansions.MonicOrthogonalPolynomial(Returns(0.),Returns(0.))
 
 @testset "MultivariateExpansions.jl" begin
-    @testset "Generic multivariate polynomial evaluation" begin
-        include("polynomial_assembly.jl")
-    end
-
     @testset "Univariate polynomials" begin
         include("univariate_poly.jl")
     end
@@ -20,6 +16,9 @@ Monomials() = MultivariateExpansions.MonicOrthogonalPolynomial(Returns(0.),Retur
         include("mollified_basis.jl")
     end
 
+    @testset "Generic multivariate basis evaluation" begin
+        include("multivariate_basis.jl")
+    end
     @testset "Score matching" begin
         include("score.jl")
     end
