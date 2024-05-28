@@ -1,5 +1,5 @@
+export MultivariateBasis
 export basisAssembly!, basisAssembly
-export Evaluate!, Evaluate
 export basesAverage!, basesAverage
 
 """
@@ -88,7 +88,7 @@ Evaluate all univariate bases associated with a multivariate basis at a set of p
 See also [`Evaluate!`](@ref).
 """
 function Evaluate(p::NTuple{N,Int}, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
-    eval_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 2)), N)
+    eval_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 1)), N)
     Evaluate!(eval_space, basis, pts)
     eval_space
 end
@@ -106,8 +106,8 @@ Evaluate all univariate bases and their derivatives associated with a multivaria
 See also [`EvalDiff!`](@ref).
 """
 function EvalDiff(p::NTuple{N,Int}, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
-    eval_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 2)), N)
-    diff_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 2)), N)
+    eval_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 1)), N)
+    diff_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 1)), N)
     EvalDiff!(eval_space, diff_space, basis, pts)
     eval_space, diff_space
 end
@@ -125,9 +125,9 @@ Evaluate all univariate bases and their first two derivatives associated with a 
 See also [`EvalDiff2!`](@ref).
 """
 function EvalDiff2(p::NTuple{N,Int}, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
-    eval_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 2)), N)
-    diff_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 2)), N)
-    diff2_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 2)), N)
+    eval_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 1)), N)
+    diff_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 1)), N)
+    diff2_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 1)), N)
     EvalDiff2!(eval_space, diff_space, diff2_space, basis, pts)
     eval_space, diff_space, diff2_space
 end
