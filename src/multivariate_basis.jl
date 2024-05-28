@@ -19,6 +19,11 @@ end
     Evaluate!(eval_space, basis, pts)
 
 Evaluate all univariate bases associated with a multivariate basis at a set of points.
+
+# Arguments
+- `eval_space::NTuple{N, AbstractMatrix}`: The output space to store the evaluations, (N,(p_j+1, M))
+- `basis::MultivariateBasis{N}`: The multivariate basis to evaluate
+- `pts::AbstractMatrix`: The points to evaluate the basis at, (M,N)
 """
 function Evaluate!(eval_space::NTuple{N, AbstractMatrix{U}},
         basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
@@ -32,6 +37,12 @@ end
     EvalDiff!(eval_space, diff_space, basis, pts)
 
 Evaluate all univariate bases and their derivatives associated with a multivariate basis at a set of points.
+
+# Arguments
+- `eval_space::NTuple{N, AbstractMatrix}`: The output space to store the evaluations, (N,(p_j+1, M))
+- `diff_space::NTuple{N, AbstractMatrix}`: The output space to store the derivatives, (N,(p_j+1, M))
+- `basis::MultivariateBasis{N}`: The multivariate basis to evaluate
+- `pts::AbstractMatrix`: The points to evaluate the basis at, (M,N)
 """
 function EvalDiff!(
         eval_space::NTuple{N, AbstractMatrix{U}}, diff_space::NTuple{N, AbstractMatrix{U}},
@@ -46,6 +57,12 @@ end
     EvalDiff2!(eval_space, diff_space, diff2_space, basis, pts)
 
 Evaluate all univariate bases and their first two derivatives associated with a multivariate basis at a set of points.
+
+# Arguments
+- `eval_space::NTuple{N, AbstractMatrix}`: The output space to store the evaluations, (N,(p_j+1, M))
+- `diff_space::NTuple{N, AbstractMatrix}`: The output space to store the first derivatives, (N,(p_j+1, M))
+- `diff2_space::NTuple{N, AbstractMatrix}`: The output space to store the second derivatives, (N,(p_j+1, M))
+- `basis::MultivariateBasis{N}`: The multivariate basis to evaluate
 """
 function EvalDiff2!(
         eval_space::NTuple{N, AbstractMatrix{U}}, diff_space::NTuple{N, AbstractMatrix{U}},
@@ -63,10 +80,15 @@ end
 
 Evaluate all univariate bases associated with a multivariate basis at a set of points.
 
+# Arguments
+- `p::NTuple{N,Int}`: The maximum degree of each univariate basis (N)
+- `basis::MultivariateBasis{N}`: The multivariate basis to evaluate
+- `pts::AbstractMatrix`: The points to evaluate the basis at, (M,N)
+
 See also [`Evaluate!`](@ref).
 """
-function Evaluate(p::Int, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
-    eval_space = ntuple(j -> Matrix{U}(undef, p + 1, size(pts, 2)), N)
+function Evaluate(p::NTuple{N,Int}, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
+    eval_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 2)), N)
     Evaluate!(eval_space, basis, pts)
     eval_space
 end
@@ -76,11 +98,16 @@ end
 
 Evaluate all univariate bases and their derivatives associated with a multivariate basis at a set of points.
 
+# Arguments
+- `p::NTuple{N,Int}`: The maximum degree of each univariate basis (N)
+- `basis::MultivariateBasis{N}`: The multivariate basis to evaluate
+- `pts::AbstractMatrix`: The points to evaluate the basis at, (M,N)
+
 See also [`EvalDiff!`](@ref).
 """
-function EvalDiff(p::Int, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
-    eval_space = ntuple(j -> Matrix{U}(undef, p + 1, size(pts, 2)), N)
-    diff_space = ntuple(j -> Matrix{U}(undef, p + 1, size(pts, 2)), N)
+function EvalDiff(p::NTuple{N,Int}, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
+    eval_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 2)), N)
+    diff_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 2)), N)
     EvalDiff!(eval_space, diff_space, basis, pts)
     eval_space, diff_space
 end
@@ -90,12 +117,17 @@ end
 
 Evaluate all univariate bases and their first two derivatives associated with a multivariate basis at a set of points.
 
+# Arguments
+- `p::NTuple{N,Int}`: The maximum degree of each univariate basis (N)
+- `basis::MultivariateBasis{N}`: The multivariate basis to evaluate
+- `pts::AbstractMatrix`: The points to evaluate the basis at, (M,N)
+
 See also [`EvalDiff2!`](@ref).
 """
-function EvalDiff2(p::Int, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
-    eval_space = ntuple(j -> Matrix{U}(undef, p + 1, size(pts, 2)), N)
-    diff_space = ntuple(j -> Matrix{U}(undef, p + 1, size(pts, 2)), N)
-    diff2_space = ntuple(j -> Matrix{U}(undef, p + 1, size(pts, 2)), N)
+function EvalDiff2(p::NTuple{Int}, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
+    eval_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 2)), N)
+    diff_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 2)), N)
+    diff2_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 2)), N)
     EvalDiff2!(eval_space, diff_space, diff2_space, basis, pts)
     eval_space, diff_space, diff2_space
 end
@@ -103,13 +135,13 @@ end
 """
     basisAssembly!(out, fmset, coeffs, univariateEvals)
 
-Evaluate a multivariate expansion at a set of points given the coefficients and univariate evaluations at each marginal point.
+Evaluate a multivariate expansion on a set of points given the coefficients and univariate bases evaluated at each point.
 
 # Arguments
-- `out::AbstractVector`: The output vector to store the polynomial evaluations, (M,)
-- `fmset::FixedMultiIndexSet{d}`: The fixed multi-index set defining the polynomial space (N,d)
-- `coeffs::AbstractVector`: The coefficients of the polynomial expansion (N,)
-- `univariateEvals::NTuple{d, AbstractMatrix}`: The univariate evaluations at each marginal point (d,(p_j, M)), where p_j is the maximum degree of the j-th univariate polynomial
+- `out::AbstractVector`: The output vector to store the expansion evaluations, (M,)
+- `fmset::FixedMultiIndexSet{d}`: The fixed multi-index set defining the expansion space (N,d)
+- `coeffs::AbstractVector`: The coefficients of the multivariate expansion (N,)
+- `univariateEvals::NTuple{d, AbstractMatrix}`: The univariate evaluations at each marginal point (d,(p_j, M)), where p_j is the maximum degree of the j-th univariate basis
 """
 function basisAssembly!(out::AbstractVector, fmset::FixedMultiIndexSet{d},
         coeffs::AbstractVector, univariateEvals::NTuple{d, T}) where {
@@ -147,12 +179,12 @@ end
 """
     Evaluate!(out, fmset, univariateEvals)
 
-Evaluate a set of multivariate polynomials given the evaluations of the univariate polynomials
+Evaluate the basis of a multivariate expansion given the evaluations of the univariate bases
 
 # Arguments
-- `out::AbstractMatrix`: The output matrix to store the polynomial evaluations, (N,M)
-- `fmset::FixedMultiIndexSet{d}`: The fixed multi-index set defining the polynomial space (N,d)
-- `univariateEvals::NTuple{d, AbstractMatrix}`: The univariate evaluations at each marginal point (d,(p_j, M)), where p_j is the maximum degree of the j-th univariate polynomial
+- `out::AbstractMatrix`: The output matrix to store the expansion evaluations, (N,M)
+- `fmset::FixedMultiIndexSet{d}`: The fixed multi-index set defining the expansion space (N,d)
+- `univariateEvals::NTuple{d, AbstractMatrix}`: The univariate evaluations at each marginal point (d,(p_j, M)), where p_j is the maximum degree of the j-th univariate basis
 
 See also [`Evaluate`](@ref).
 """
@@ -190,12 +222,12 @@ end
 """
     basesAverage!(out, fmset, univariateEvals)
 
-Evaluate the average of a set of polynomials over a set of points given the univariate polynomial evaluations
+Evaluate the average of a set of basis functions over a set of points given the univariate basis evaluations
 
 # Arguments
-- `out::AbstractVector`: The output vector to store the polynomial evaluations, (N,)
-- `fmset::FixedMultiIndexSet{d}`: The fixed multi-index set defining the polynomial space (N,d)
-- `univariateEvals::NTuple{d, AbstractMatrix}`: The univariate evaluations at each marginal point (d,(p_j, M)), where p_j is the maximum degree of the j-th univariate polynomial
+- `out::AbstractVector`: The output vector to store the basis averages, (N,)
+- `fmset::FixedMultiIndexSet{d}`: The fixed multi-index set defining the function space (N,d)
+- `univariateEvals::NTuple{d, AbstractMatrix}`: The univariate evaluations at each marginal point (d,(p_j, M)), where p_j is the maximum degree of the j-th univariate basis
 
 See also [`basesAverage`](@ref).
 """
@@ -243,7 +275,7 @@ end
 """
     Evaluate(fmset, univariateEvals)
 
-Out-of-place evaluation of multivariate polynomials
+Out-of-place evaluation of multivariate expansion
 
 See [`Evaluate!`](@ref) for details.
 """
@@ -256,7 +288,7 @@ end
 """
     basesAverage(fmset, univariateEvals)
 
-Out-of-place evaluation of the average of a set of polynomials
+Out-of-place evaluation of the average of a set of basis functions
 
 See [`basesAverage!`](@ref) for details.
 """
