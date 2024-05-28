@@ -1,6 +1,7 @@
 export LegendrePolynomial, MonicLegendrePolynomial,
-       ProbabilistHermite, PhysicistHermite,
-       JacobiPolynomial, MonicJacobiPolynomial
+       ProbabilistHermitePolynomial, PhysicistHermitePolynomial,
+       JacobiPolynomial, MonicJacobiPolynomial,
+       LaguerrePolynomial
 
 # Abstract type for univariate polynomials
 abstract type Polynomial <: UnivariateBasis end
@@ -36,7 +37,7 @@ _ProbHermiteAk = Returns(0)
 _ProbHermiteBk = identity
 
 # Probabilist Hermite polynomials `He_k`, orthogonal under `exp(-x^2/2)`
-ProbabilistHermite() = MonicOrthogonalPolynomial(_ProbHermiteAk,_ProbHermiteBk)
+ProbabilistHermitePolynomial() = MonicOrthogonalPolynomial(_ProbHermiteAk,_ProbHermiteBk)
 
 _PhysHermiteLk = Returns(1)
 _PhysHermiteMk = Returns(2)
@@ -44,19 +45,25 @@ _PhysHermiteAk = Returns(0)
 _PhysHermiteBk(k::Int) = 2k
 
 # Physicist Hermite polynomials `H_k`, orthogonal under `exp(-x^2)`
-PhysicistHermite() = OrthogonalPolynomial(_PhysHermiteLk,_PhysHermiteMk,_PhysHermiteAk,_PhysHermiteBk)
+PhysicistHermitePolynomial() = OrthogonalPolynomial(_PhysHermiteLk,_PhysHermiteMk,_PhysHermiteAk,_PhysHermiteBk)
 
 _LegendreLk(k::Int) = k+1
 _LegendreMk(k::Int) = 2k+1
-_LegendreAk(k::Int) = 0
+_LegendreAk = Returns(0)
 _LegendreBk(k::Int) = k
 # Legendre polynomials `P_k`, orthogonal under `U[-1,1]`
 LegendrePolynomial() = OrthogonalPolynomial(_LegendreLk,_LegendreMk,_LegendreAk,_LegendreBk)
 
 _MonicLegendreAk = Returns(0.)
-_MonicLegendreBk(k::Int) = (k*k)/(4k*k-1.)
+_MonicLegendreBk(k::Int) = (k*k)/muladd(4,k*k,-1.)
 # Monic Legendre polynomials `P_k`, orthogonal under `U[-1,1]`
 MonicLegendrePolynomial() = MonicOrthogonalPolynomial(_MonicLegendreAk,_MonicLegendreBk)
+
+_LaguerreLk(k::Int) = k+1
+_LaguerreMk(k::Int) = -1
+_LaguerreAk(k::Int) = -muladd(2,k,1)
+_LaguerreBk(k::Int) = k
+LaguerrePolynomial() = OrthogonalPolynomial(_LaguerreLk,_LaguerreMk,_LaguerreAk,_LaguerreBk)
 
 """
     MonicJacobiPolynomial(α,β)
@@ -135,6 +142,7 @@ function EvalDiff!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U},
             diff_space[idx+1,j] /= lk(k)
         end
     end
+    nothing
 end
 
 function EvalDiff2!(eval_space::AbstractMatrix{U}, diff_space::AbstractMatrix{U}, diff2_space::AbstractMatrix{U}, poly::OrthogonalPolynomial, x::AbstractVector{U}) where {U}

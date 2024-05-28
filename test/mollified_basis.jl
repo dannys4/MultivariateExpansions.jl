@@ -106,46 +106,51 @@ end
         @test diff2_space ≈ diff2_space_ref atol=1e-14
     end
 
-    @testset "SquaredExponential" begin
-        # Start mollifying at cubics
-        start_degree = 3
-        moll = SquaredExponential()
-        moll_eval = Evaluate.((moll,), pts)
-        moll_basis = MollifiedBasis(start_degree, basis, moll)
+    @testset "Other bases" begin
+        moll_test1 = (PhysicistHermitePolynomial(), SquaredExponential(), 0)
+        moll_test2 = (ProbabilistHermitePolynomial(), GaspariCohn(3.), 3)
+        moll_test3 = (LaguerrePolynomial(), ExponentialFilter(9.), 2)
+        for (basis, moll, start_degree) in [moll_test1, moll_test2, moll_test3]
+            pts = moll isa ExponentialFilter ? log.(1 ./ (1 .- rand(rng, N_pts))) : randn(rng, N_pts)
 
-        eval_space = zeros(p+1, N_pts)
-        Evaluate!(eval_space, moll_basis, pts)
+            EvalDiff2!(eval_space_ref, diff_space_ref, diff2_space_ref, basis, pts)
 
-        @test eval_space[1:start_degree,:] ≈ eval_space_ref[1:start_degree,:] atol=1e-14
-        ratio = eval_space[start_degree+1:end,:] ./ eval_space_ref[start_degree+1:end,:]
+            moll_eval = Evaluate.((moll,), pts)
+            moll_basis = MollifiedBasis(start_degree, basis, moll)
 
-        @test ratio ≈ repeat(moll_eval',p+1-start_degree,1) atol=1e-14
+            eval_space = Evaluate(p, moll_basis, pts)
 
-        # Derivatives
-        eval_space_moll = copy(eval_space)
-        diff_space = zeros(p+1, N_pts)
-        EvalDiff!(eval_space, diff_space, moll_basis, pts)
+            @test eval_space[1:start_degree,:] ≈ eval_space_ref[1:start_degree,:] atol=1e-12
+            ratio = eval_space[start_degree+1:end,:] ./ eval_space_ref[start_degree+1:end,:]
 
-        @test eval_space ≈ eval_space_moll atol=1e-14
-        @test diff_space[1:start_degree,:] ≈ diff_space_ref[1:start_degree,:] atol=1e-14
+            @test ratio ≈ repeat(moll_eval',p+1-start_degree,1) atol=1e-12
 
-        fd_delta = 1e-5
-        eval_moll_plus_fd = Evaluate(p, moll_basis, pts .+ fd_delta)
-        eval_moll_minus_fd = Evaluate(p, moll_basis, pts .- fd_delta)
-        diff_space_fd = (eval_moll_plus_fd - eval_moll_minus_fd) / (2fd_delta)
+            # Derivatives
+            eval_space_moll = copy(eval_space)
+            diff_space = zeros(p+1, N_pts)
+            EvalDiff!(eval_space, diff_space, moll_basis, pts)
 
-        @test diff_space ≈ diff_space_fd rtol=10fd_delta
+            @test eval_space ≈ eval_space_moll atol=1e-12
+            @test diff_space[1:start_degree,:] ≈ diff_space_ref[1:start_degree,:] atol=1e-12
 
-        # Second derivative
-        diff_space_moll = copy(diff_space)
-        diff2_space = zeros(p+1, N_pts)
-        EvalDiff2!(eval_space, diff_space, diff2_space, moll_basis, pts)
+            fd_delta = 1e-5
+            eval_moll_plus_fd = Evaluate(p, moll_basis, pts .+ fd_delta)
+            eval_moll_minus_fd = Evaluate(p, moll_basis, pts .- fd_delta)
+            diff_space_fd = (eval_moll_plus_fd - eval_moll_minus_fd) / (2fd_delta)
 
-        @test eval_space ≈ eval_space_moll atol=1e-14
-        @test diff_space ≈ diff_space_moll atol=1e-14
-        @test diff2_space[1:start_degree,:] ≈ diff2_space_ref[1:start_degree,:] atol=1e-14
+            @test diff_space ≈ diff_space_fd rtol=10fd_delta
 
-        diff2_space_fd = (eval_moll_plus_fd .+ eval_moll_minus_fd .- 2eval_space_moll) / (fd_delta^2)
-        @test diff2_space ≈ diff2_space_fd rtol=10fd_delta
+            # Second derivative
+            diff_space_moll = copy(diff_space)
+            diff2_space = zeros(p+1, N_pts)
+            EvalDiff2!(eval_space, diff_space, diff2_space, moll_basis, pts)
+
+            @test eval_space ≈ eval_space_moll atol=1e-12
+            @test diff_space ≈ diff_space_moll atol=1e-12
+            @test diff2_space[1:start_degree,:] ≈ diff2_space_ref[1:start_degree,:] atol=1e-14
+
+            diff2_space_fd = (eval_moll_plus_fd .+ eval_moll_minus_fd .- 2eval_space_moll) / (fd_delta^2)
+            @test diff2_space ≈ diff2_space_fd rtol=10fd_delta
+        end
     end
 end
