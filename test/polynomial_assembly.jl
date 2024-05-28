@@ -7,7 +7,7 @@ univariateEvals = ntuple(j->reduce(hcat, pts[j,:] .^ k for k in 0:p)', d)
 @testset "Polynomial Assembly" begin
     coeffs = randn(rng, length(fmset))
     out = zeros(N_pts)
-    polynomialAssembly!(out, fmset, coeffs, univariateEvals)
+    basisAssembly!(out, fmset, coeffs, univariateEvals)
     all_out_correct = true
     for pt_idx in 1:N_pts
         expected_pt_eval = 0.
@@ -22,13 +22,13 @@ univariateEvals = ntuple(j->reduce(hcat, pts[j,:] .^ k for k in 0:p)', d)
         end
     end
     @test all_out_correct
-    out2 = polynomialAssembly(fmset, coeffs, univariateEvals)
+    out2 = basisAssembly(fmset, coeffs, univariateEvals)
     @test isapprox(out, out2, atol=1e-12)
 end
 
 @testset "Polynomial Evaluation" begin
     out = zeros(length(fmset), N_pts)
-    polynomialsEval!(out, fmset, univariateEvals)
+    Evaluate!(out, fmset, univariateEvals)
     all_out_correct = true
     for pt_idx in 1:N_pts
         expected_pt_eval = 0.
@@ -38,13 +38,13 @@ end
         end
         @test all_out_correct
     end
-    out2 = polynomialsEval(fmset, univariateEvals)
+    out2 = Evaluate(fmset, univariateEvals)
     @test isapprox(out, out2, atol=1e-12)
 end
 
 @testset "Polynomial average" begin
     out = zeros(length(fmset))
-    polynomialsAverage!(out, fmset, univariateEvals)
+    basesAverage!(out, fmset, univariateEvals)
     all_out_correct = true
     @inbounds for (poly_idx,midx) in enumerate(mset)
         expected_poly_avg = 0.
@@ -56,6 +56,6 @@ end
         all_out_correct &= isapprox(out[poly_idx], expected_poly_avg, atol=1e-12)
     end
     @test all_out_correct
-    out2 = polynomialsAverage(fmset, univariateEvals)
+    out2 = basesAverage(fmset, univariateEvals)
     @test isapprox(out, out2, atol=1e-12)
 end

@@ -1,10 +1,109 @@
-export polynomialAssembly!, polynomialAssembly
-export polynomialsEval!, polynomialsEval
-export polynomialsAverage!, polynomialsAverage
+export basisAssembly!, basisAssembly
+export Evaluate!, Evaluate
+export basesAverage!, basesAverage
 
 """
-    polynomialAssembly!(out, fmset, coeffs, univariateEvals)
-Evaluate a polynomial expansion at a set of points given the coefficients and univariate evaluations at each marginal point.
+    MultivariateBasis(univariateBases...)
+
+A type to store a multivariate basis as a tuple of univariate bases.
+"""
+struct MultivariateBasis{N, T}
+    univariateBases::T
+    function MultivariateBasis(univariateBases::Vararg{UnivariateBasis, N}) where {N}
+        basisTuple = tuple(univariateBases...)
+        new{N, typeof(basisTuple)}(basisTuple)
+    end
+end
+
+"""
+    Evaluate!(eval_space, basis, pts)
+
+Evaluate all univariate bases associated with a multivariate basis at a set of points.
+"""
+function Evaluate!(eval_space::NTuple{N, AbstractMatrix{U}},
+        basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
+    for j in 1:N
+        Evaluate!(eval_space[j], basis.univariateBases[j], @view(pts[:, j]))
+    end
+    nothing
+end
+
+"""
+    EvalDiff!(eval_space, diff_space, basis, pts)
+
+Evaluate all univariate bases and their derivatives associated with a multivariate basis at a set of points.
+"""
+function EvalDiff!(
+        eval_space::NTuple{N, AbstractMatrix{U}}, diff_space::NTuple{N, AbstractMatrix{U}},
+        basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
+    for j in 1:N
+        EvalDiff!(eval_space[j], diff_space[j], basis.univariateBases[j], @view(pts[:, j]))
+    end
+    nothing
+end
+
+"""
+    EvalDiff2!(eval_space, diff_space, diff2_space, basis, pts)
+
+Evaluate all univariate bases and their first two derivatives associated with a multivariate basis at a set of points.
+"""
+function EvalDiff2!(
+        eval_space::NTuple{N, AbstractMatrix{U}}, diff_space::NTuple{N, AbstractMatrix{U}},
+        diff2_space::NTuple{N, AbstractMatrix{U}},
+        basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
+    for j in 1:N
+        EvalDiff2!(eval_space[j], diff_space[j], diff2_space[j],
+            basis.univariateBases[j], @view(pts[:, j]))
+    end
+    nothing
+end
+
+"""
+    Evaluate(p, basis, pts)
+
+Evaluate all univariate bases associated with a multivariate basis at a set of points.
+
+See also [`Evaluate!`](@ref).
+"""
+function Evaluate(p::Int, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
+    eval_space = ntuple(j -> Matrix{U}(undef, p + 1, size(pts, 2)), N)
+    Evaluate!(eval_space, basis, pts)
+    eval_space
+end
+
+"""
+    EvalDiff(p, basis, pts)
+
+Evaluate all univariate bases and their derivatives associated with a multivariate basis at a set of points.
+
+See also [`EvalDiff!`](@ref).
+"""
+function EvalDiff(p::Int, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
+    eval_space = ntuple(j -> Matrix{U}(undef, p + 1, size(pts, 2)), N)
+    diff_space = ntuple(j -> Matrix{U}(undef, p + 1, size(pts, 2)), N)
+    EvalDiff!(eval_space, diff_space, basis, pts)
+    eval_space, diff_space
+end
+
+"""
+    EvalDiff2(p, basis, pts)
+
+Evaluate all univariate bases and their first two derivatives associated with a multivariate basis at a set of points.
+
+See also [`EvalDiff2!`](@ref).
+"""
+function EvalDiff2(p::Int, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
+    eval_space = ntuple(j -> Matrix{U}(undef, p + 1, size(pts, 2)), N)
+    diff_space = ntuple(j -> Matrix{U}(undef, p + 1, size(pts, 2)), N)
+    diff2_space = ntuple(j -> Matrix{U}(undef, p + 1, size(pts, 2)), N)
+    EvalDiff2!(eval_space, diff_space, diff2_space, basis, pts)
+    eval_space, diff_space, diff2_space
+end
+
+"""
+    basisAssembly!(out, fmset, coeffs, univariateEvals)
+
+Evaluate a multivariate expansion at a set of points given the coefficients and univariate evaluations at each marginal point.
 
 # Arguments
 - `out::AbstractVector`: The output vector to store the polynomial evaluations, (M,)
@@ -12,7 +111,7 @@ Evaluate a polynomial expansion at a set of points given the coefficients and un
 - `coeffs::AbstractVector`: The coefficients of the polynomial expansion (N,)
 - `univariateEvals::NTuple{d, AbstractMatrix}`: The univariate evaluations at each marginal point (d,(p_j, M)), where p_j is the maximum degree of the j-th univariate polynomial
 """
-function polynomialAssembly!(out::AbstractVector, fmset::FixedMultiIndexSet{d},
+function basisAssembly!(out::AbstractVector, fmset::FixedMultiIndexSet{d},
         coeffs::AbstractVector, univariateEvals::NTuple{d, T}) where {
         d, T <: AbstractMatrix}
     # M = num points, N = num multi-indices, d = input dimension
@@ -46,7 +145,8 @@ function polynomialAssembly!(out::AbstractVector, fmset::FixedMultiIndexSet{d},
 end
 
 """
-    polynomialsEval!(out, fmset, univariateEvals)
+    Evaluate!(out, fmset, univariateEvals)
+
 Evaluate a set of multivariate polynomials given the evaluations of the univariate polynomials
 
 # Arguments
@@ -54,9 +154,9 @@ Evaluate a set of multivariate polynomials given the evaluations of the univaria
 - `fmset::FixedMultiIndexSet{d}`: The fixed multi-index set defining the polynomial space (N,d)
 - `univariateEvals::NTuple{d, AbstractMatrix}`: The univariate evaluations at each marginal point (d,(p_j, M)), where p_j is the maximum degree of the j-th univariate polynomial
 
-See also [`polynomialsEval`](@ref).
+See also [`Evaluate`](@ref).
 """
-function polynomialsEval!(out::AbstractMatrix, fmset::FixedMultiIndexSet{d},
+function Evaluate!(out::AbstractMatrix, fmset::FixedMultiIndexSet{d},
         univariateEvals::NTuple{d, T}) where {d, T <: AbstractMatrix}
     # M = num points, N = num multi-indices, d = input dimension
     # out = (N,M)
@@ -88,7 +188,8 @@ function polynomialsEval!(out::AbstractMatrix, fmset::FixedMultiIndexSet{d},
 end
 
 """
-    polynomialsAverage!(out, fmset, univariateEvals)
+    basesAverage!(out, fmset, univariateEvals)
+
 Evaluate the average of a set of polynomials over a set of points given the univariate polynomial evaluations
 
 # Arguments
@@ -96,9 +197,9 @@ Evaluate the average of a set of polynomials over a set of points given the univ
 - `fmset::FixedMultiIndexSet{d}`: The fixed multi-index set defining the polynomial space (N,d)
 - `univariateEvals::NTuple{d, AbstractMatrix}`: The univariate evaluations at each marginal point (d,(p_j, M)), where p_j is the maximum degree of the j-th univariate polynomial
 
-See also [`polynomialsAverage`](@ref).
+See also [`basesAverage`](@ref).
 """
-function polynomialsAverage!(out::AbstractVector, fmset::FixedMultiIndexSet{d},
+function basesAverage!(out::AbstractVector, fmset::FixedMultiIndexSet{d},
         univariateEvals::NTuple{d, T}) where {d, T <: AbstractMatrix}
     N_midx = length(fmset)
     M_pts = size(univariateEvals[1], 2)
@@ -120,44 +221,47 @@ function polynomialsAverage!(out::AbstractVector, fmset::FixedMultiIndexSet{d},
             power = fmset.nz_values[j]
             tmp .*= univariateEvals[dim][power + 1, :]
         end
-        out[midx] = sum(tmp)/M_pts
+        out[midx] = sum(tmp) / M_pts
     end
     nothing
 end
 
 """
-    polynomialAssembly(fmset, coeffs, univariateEvals)
-Out-of-place assembly of multivariate polynomial
+    basisAssembly(fmset, coeffs, univariateEvals)
 
-See [`polynomialAssembly!`](@ref) for details.
+Out-of-place assembly of multivariate basis
+
+See [`basisAssembly!`](@ref) for details.
 """
-function polynomialAssembly(
+function basisAssembly(
         fmset::FixedMultiIndexSet{d}, coeffs::AbstractVector, univariateEvals) where {d}
     out = zeros(eltype(univariateEvals[1]), size(univariateEvals[1], 2))
-    polynomialAssembly!(out, fmset, coeffs, univariateEvals)
+    basisAssembly!(out, fmset, coeffs, univariateEvals)
     out
 end
 
 """
-    polynomialsEval(fmset, univariateEvals)
+    Evaluate(fmset, univariateEvals)
+
 Out-of-place evaluation of multivariate polynomials
 
-See [`polynomialsEval!`](@ref) for details.
+See [`Evaluate!`](@ref) for details.
 """
-function polynomialsEval(fmset::FixedMultiIndexSet{d}, univariateEvals) where {d}
+function Evaluate(fmset::FixedMultiIndexSet{d}, univariateEvals) where {d}
     out = zeros(eltype(univariateEvals[1]), length(fmset), size(univariateEvals[1], 2))
-    polynomialsEval!(out, fmset, univariateEvals)
+    Evaluate!(out, fmset, univariateEvals)
     out
 end
 
 """
-    polynomialsAverage(fmset, univariateEvals)
+    basesAverage(fmset, univariateEvals)
+
 Out-of-place evaluation of the average of a set of polynomials
 
-See [`polynomialsAverage!`](@ref) for details.
+See [`basesAverage!`](@ref) for details.
 """
-function polynomialsAverage(fmset::FixedMultiIndexSet{d}, univariateEvals) where {d}
+function basesAverage(fmset::FixedMultiIndexSet{d}, univariateEvals) where {d}
     out = zeros(length(fmset))
-    polynomialsAverage!(out, fmset, univariateEvals)
+    basesAverage!(out, fmset, univariateEvals)
     out
 end

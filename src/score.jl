@@ -116,3 +116,7 @@ function score_optimal_coeff(
     H[constant_term, constant_term] = 1.0
     H, v
 end
+
+function time_score_optimal_coeff()
+
+end
