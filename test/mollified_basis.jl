@@ -109,7 +109,7 @@ end
     @testset "Other bases" begin
         moll_test1 = (PhysicistHermitePolynomial(), SquaredExponential(), 0)
         moll_test2 = (ProbabilistHermitePolynomial(), GaspariCohn(3.), 3)
-        moll_test3 = (LaguerrePolynomial(), ExponentialFilter(9.), 2)
+        moll_test3 = (LaguerrePolynomial(), ExponentialFilter(9.), 1)
         for (basis, moll, start_degree) in [moll_test1, moll_test2, moll_test3]
             pts = moll isa ExponentialFilter ? log.(1 ./ (1 .- rand(rng, N_pts))) : randn(rng, N_pts)
 

@@ -12,7 +12,7 @@ One example is [Hermite Functions](https://en.wikipedia.org/wiki/Hermite_polynom
 
 # Example
 ```jldoctest
-julia> basis = ProbabilistHermite();
+julia> basis = ProbabilistHermitePolynomial();
 
 julia> moll = SquaredExponential();
 
