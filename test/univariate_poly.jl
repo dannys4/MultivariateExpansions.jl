@@ -70,7 +70,7 @@ pts = 2rand(rng, N_pts) .- 1
             x->x^4 - 6x^2 + 3,
             x->x^5 - 10x^3 + 15x
         ]
-        prob_hermite_poly = ProbabilistHermite()
+        prob_hermite_poly = ProbabilistHermitePolynomial()
         space = zeros(p+1, N_pts)
         Evaluate!(space, prob_hermite_poly, pts)
         for k in eachindex(exact_prob_hermite_polys)
@@ -87,11 +87,28 @@ pts = 2rand(rng, N_pts) .- 1
             x->16x^4 - 48x^2 + 12,
             x->32x^5 - 160x^3 + 120x
         ]
-        phys_hermite_poly = PhysicistHermite()
+        phys_hermite_poly = PhysicistHermitePolynomial()
         space = zeros(p+1, N_pts)
         Evaluate!(space, phys_hermite_poly, pts)
         for k in eachindex(exact_phys_hermite_polys)
             @test isapprox(space[k,:], exact_phys_hermite_polys[k].(pts), rtol=1e-12)
+        end
+    end
+
+    @testset "Laguerre Polynomials" begin
+        exact_laguerre_polys = [
+            Returns(1.),
+            x->1-x,
+            x->(x^2 - 4x + 2)/2,
+            x->-(x^3 - 9x^2 + 18x - 6)/6,
+            x->(x^4 - 16x^3 + 72x^2 - 96x + 24)/24,
+            x->-(x^5 - 25x^4 + 200x^3 - 600x^2 + 600x - 120)/120
+        ]
+        laguerre_poly = LaguerrePolynomial()
+        space = zeros(p+1, N_pts)
+        Evaluate!(space, laguerre_poly, pts)
+        for k in eachindex(exact_laguerre_polys)
+            @test isapprox(space[k,:], exact_laguerre_polys[k].(pts), rtol=1e-12)
         end
     end
 end
@@ -112,7 +129,7 @@ end
     end
 
     @testset "ProbabilistHermite" begin
-        prob_hermite_poly = ProbabilistHermite()
+        prob_hermite_poly = ProbabilistHermitePolynomial()
         ref_eval_space = zeros(p+1, N_pts)
         Evaluate!(ref_eval_space, prob_hermite_poly, pts)
         ref_diff_space = zeros(p+1, N_pts)
@@ -183,7 +200,7 @@ end
     end
 
     @testset "ProbabilistHermite" begin
-        prob_hermite_poly = ProbabilistHermite()
+        prob_hermite_poly = ProbabilistHermitePolynomial()
         ref_eval_space = zeros(p+1, N_pts)
         Evaluate!(ref_eval_space, prob_hermite_poly, pts)
         ref_diff_space = zeros(p+1, N_pts)

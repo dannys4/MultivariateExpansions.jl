@@ -1,5 +1,5 @@
 export MollifiedBasis
-export SquaredExponential, GaspariCohn
+export SquaredExponential, GaspariCohn, ExponentialFilter
 
 abstract type Mollifier end
 
@@ -12,7 +12,7 @@ One example is [Hermite Functions](https://en.wikipedia.org/wiki/Hermite_polynom
 
 # Example
 ```jldoctest
-julia> basis = ProbabilistHermite();
+julia> basis = ProbabilistHermitePolynomial();
 
 julia> moll = SquaredExponential();
 
@@ -109,6 +109,24 @@ function EvalDiff2(m::GaspariCohn, x)
         return _gaspari_cohn_large(ra), sign(x)*_gaspari_cohn_diff_large(ra)*m.input_scale, _gaspari_cohn_diff2_large(ra)*m.input_scale*m.input_scale
     end
     0.0, 0.0, 0.0
+end
+
+struct ExponentialFilter{S<:Real}<: Mollifier
+    gc::GaspariCohn{S}
+    function ExponentialFilter(bound::S) where {S}
+        new{S}(GaspariCohn(sqrt(bound)))
+    end
+end
+
+Evaluate(m::ExponentialFilter, x) = Evaluate(m.gc, sqrt(x))
+function EvalDiff(m::ExponentialFilter, x)
+    eval, diff = EvalDiff(m.gc, sqrt(x))
+    eval, diff / (2 * sqrt(x))
+end
+
+function EvalDiff2(m::ExponentialFilter, x)
+    eval, diff, diff2 = EvalDiff2(m.gc, sqrt(x))
+    eval, diff/(2 * sqrt(x)), diff2 / (4 * x) - diff / (4 * sqrt(x * x * x))
 end
 
 function Evaluate!(space::AbstractMatrix{U}, basis::MollifiedBasis{Start},

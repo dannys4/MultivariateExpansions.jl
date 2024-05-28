@@ -46,33 +46,34 @@ basis = JacobiPolynomial(0.75, 0.52)
         @test all(isapprox.(moll_diff2_ratio, moll_diff2_ratio[1], rtol=1e-5))
     end
 
-    @testset "GaspariCohn" begin
-        pts = -5:0.1:5
-        bound = 3.
+    @testset "Other Filters" begin
+        bound = 1.5
         fd_delta = 1e-5
-        gc = GaspariCohn(bound)
-        eval_gc_ref = Evaluate.((gc,), pts)
-        @test all(eval_gc_ref[abs.(pts) .> bound] .== 0.)
+        for filter in [GaspariCohn(bound), ExponentialFilter(bound)]
+            pts = filter isa GaspariCohn ? (-5:0.1:5) : (0.05:0.05:5)
+            eval_filter_ref = Evaluate.((filter,), pts)
+            @test all(eval_filter_ref[abs.(pts) .> bound] .== 0.)
 
-        eval_gc_ref_plus_fd = Evaluate.((gc,), pts .+ fd_delta)
-        eval_gc_ref_minus_fd = Evaluate.((gc,), pts .- fd_delta)
-        diff_gc_ref = (eval_gc_ref_plus_fd - eval_gc_ref_minus_fd) / (2fd_delta)
-        diff2_gc_ref = (eval_gc_ref_plus_fd - 2eval_gc_ref .+ eval_gc_ref_minus_fd) / (fd_delta^2)
+            eval_filter_ref_plus_fd = Evaluate.((filter,), pts .+ fd_delta)
+            eval_filter_ref_minus_fd = Evaluate.((filter,), pts .- fd_delta)
+            diff_filter_ref = (eval_filter_ref_plus_fd - eval_filter_ref_minus_fd) / (2fd_delta)
+            diff2_filter_ref = (eval_filter_ref_plus_fd - 2eval_filter_ref .+ eval_filter_ref_minus_fd) / (fd_delta^2)
 
-        eval_gc_diffs = EvalDiff.((gc,), pts)
-        eval_gc, diff_gc = first.(eval_gc_diffs), last.(eval_gc_diffs)
-        @test eval_gc ≈ eval_gc_ref atol=1e-14
-        @test diff_gc[abs.(pts) .< bound] ≈ diff_gc_ref[abs.(pts) .< bound] rtol=fd_delta
-        @test all(diff_gc[abs.(pts) .> bound] .== 0.)
+            eval_filter_diffs = EvalDiff.((filter,), pts)
+            eval_filter, diff_filter = first.(eval_filter_diffs), last.(eval_filter_diffs)
+            @test eval_filter ≈ eval_filter_ref atol=1e-14
+            @test diff_filter[abs.(pts) .< bound] ≈ diff_filter_ref[abs.(pts) .< bound] rtol=fd_delta
+            @test all(diff_filter[abs.(pts) .> bound] .== 0.)
 
-        eval_gc_diffs = EvalDiff2.((gc,), pts)
-        eval_gc, diff2_gc = first.(eval_gc_diffs), last.(eval_gc_diffs)
-        diff_gc = map(x->x[2], eval_gc_diffs)
-        @test eval_gc ≈ eval_gc_ref atol=1e-14
-        @test diff_gc[abs.(pts) .< bound] ≈ diff_gc_ref[abs.(pts) .< bound] rtol=fd_delta
-        @test all(diff_gc[abs.(pts) .> bound] .== 0.)
-        @test diff2_gc[abs.(pts) .< bound] ≈ diff2_gc_ref[abs.(pts) .< bound] rtol=fd_delta
-        @test all(diff2_gc[abs.(pts) .> bound] .== 0.)
+            eval_filter_diffs = EvalDiff2.((filter,), pts)
+            eval_filter, diff2_filter = first.(eval_filter_diffs), last.(eval_filter_diffs)
+            diff_filter = map(x->x[2], eval_filter_diffs)
+            @test eval_filter ≈ eval_filter_ref atol=1e-14
+            @test diff_filter[abs.(pts) .< bound] ≈ diff_filter_ref[abs.(pts) .< bound] rtol=fd_delta
+            @test all(diff_filter[abs.(pts) .> bound] .== 0.)
+            @test diff2_filter[abs.(pts) .< bound] ≈ diff2_filter_ref[abs.(pts) .< bound] rtol=fd_delta
+            @test all(diff2_filter[abs.(pts) .> bound] .== 0.)
+        end
     end
 end
 
@@ -105,46 +106,51 @@ end
         @test diff2_space ≈ diff2_space_ref atol=1e-14
     end
 
-    @testset "SquaredExponential" begin
-        # Start mollifying at cubics
-        start_degree = 3
-        moll = SquaredExponential()
-        moll_eval = Evaluate.((moll,), pts)
-        moll_basis = MollifiedBasis(start_degree, basis, moll)
+    @testset "Other bases" begin
+        moll_test1 = (PhysicistHermitePolynomial(), SquaredExponential(), 0)
+        moll_test2 = (ProbabilistHermitePolynomial(), GaspariCohn(3.), 3)
+        moll_test3 = (LaguerrePolynomial(), ExponentialFilter(9.), 1)
+        for (basis, moll, start_degree) in [moll_test1, moll_test2, moll_test3]
+            pts = moll isa ExponentialFilter ? log.(1 ./ (1 .- rand(rng, N_pts))) : randn(rng, N_pts)
 
-        eval_space = zeros(p+1, N_pts)
-        Evaluate!(eval_space, moll_basis, pts)
+            EvalDiff2!(eval_space_ref, diff_space_ref, diff2_space_ref, basis, pts)
 
-        @test eval_space[1:start_degree,:] ≈ eval_space_ref[1:start_degree,:] atol=1e-14
-        ratio = eval_space[start_degree+1:end,:] ./ eval_space_ref[start_degree+1:end,:]
+            moll_eval = Evaluate.((moll,), pts)
+            moll_basis = MollifiedBasis(start_degree, basis, moll)
 
-        @test ratio ≈ repeat(moll_eval',p+1-start_degree,1) atol=1e-14
+            eval_space = Evaluate(p, moll_basis, pts)
 
-        # Derivatives
-        eval_space_moll = copy(eval_space)
-        diff_space = zeros(p+1, N_pts)
-        EvalDiff!(eval_space, diff_space, moll_basis, pts)
+            @test eval_space[1:start_degree,:] ≈ eval_space_ref[1:start_degree,:] atol=1e-12
+            ratio = eval_space[start_degree+1:end,:] ./ eval_space_ref[start_degree+1:end,:]
 
-        @test eval_space ≈ eval_space_moll atol=1e-14
-        @test diff_space[1:start_degree,:] ≈ diff_space_ref[1:start_degree,:] atol=1e-14
+            @test ratio ≈ repeat(moll_eval',p+1-start_degree,1) atol=1e-12
 
-        fd_delta = 1e-5
-        eval_moll_plus_fd = Evaluate(p, moll_basis, pts .+ fd_delta)
-        eval_moll_minus_fd = Evaluate(p, moll_basis, pts .- fd_delta)
-        diff_space_fd = (eval_moll_plus_fd - eval_moll_minus_fd) / (2fd_delta)
+            # Derivatives
+            eval_space_moll = copy(eval_space)
+            diff_space = zeros(p+1, N_pts)
+            EvalDiff!(eval_space, diff_space, moll_basis, pts)
 
-        @test diff_space ≈ diff_space_fd rtol=10fd_delta
+            @test eval_space ≈ eval_space_moll atol=1e-12
+            @test diff_space[1:start_degree,:] ≈ diff_space_ref[1:start_degree,:] atol=1e-12
 
-        # Second derivative
-        diff_space_moll = copy(diff_space)
-        diff2_space = zeros(p+1, N_pts)
-        EvalDiff2!(eval_space, diff_space, diff2_space, moll_basis, pts)
+            fd_delta = 1e-5
+            eval_moll_plus_fd = Evaluate(p, moll_basis, pts .+ fd_delta)
+            eval_moll_minus_fd = Evaluate(p, moll_basis, pts .- fd_delta)
+            diff_space_fd = (eval_moll_plus_fd - eval_moll_minus_fd) / (2fd_delta)
 
-        @test eval_space ≈ eval_space_moll atol=1e-14
-        @test diff_space ≈ diff_space_moll atol=1e-14
-        @test diff2_space[1:start_degree,:] ≈ diff2_space_ref[1:start_degree,:] atol=1e-14
+            @test diff_space ≈ diff_space_fd rtol=10fd_delta
 
-        diff2_space_fd = (eval_moll_plus_fd .+ eval_moll_minus_fd .- 2eval_space_moll) / (fd_delta^2)
-        @test diff2_space ≈ diff2_space_fd rtol=10fd_delta
+            # Second derivative
+            diff_space_moll = copy(diff_space)
+            diff2_space = zeros(p+1, N_pts)
+            EvalDiff2!(eval_space, diff_space, diff2_space, moll_basis, pts)
+
+            @test eval_space ≈ eval_space_moll atol=1e-12
+            @test diff_space ≈ diff_space_moll atol=1e-12
+            @test diff2_space[1:start_degree,:] ≈ diff2_space_ref[1:start_degree,:] atol=1e-14
+
+            diff2_space_fd = (eval_moll_plus_fd .+ eval_moll_minus_fd .- 2eval_space_moll) / (fd_delta^2)
+            @test diff2_space ≈ diff2_space_fd rtol=10fd_delta
+        end
     end
 end
