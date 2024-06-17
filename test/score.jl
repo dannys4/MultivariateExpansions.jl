@@ -12,17 +12,17 @@
     pts_fd = copy(pts)
     univariateEvals = ntuple(j -> reduce(hcat, pts[j, :] .^ k for k in 0:p)', d)
     out = zeros(N_pts)
-    polynomialAssembly!(out, fmset, coeffs, univariateEvals)
+    basisAssembly!(out, fmset, coeffs, univariateEvals)
 
     for i in 1:d
         out_plus_fd = zeros(N_pts)
         out_minus_fd = zeros(N_pts)
         pts_fd[i, :] .+= fd_delta
         univariateEvals_fd = ntuple(j -> reduce(hcat, pts_fd[j, :] .^ k for k in 0:p)', d)
-        polynomialAssembly!(out_plus_fd, fmset, coeffs, univariateEvals_fd)
+        basisAssembly!(out_plus_fd, fmset, coeffs, univariateEvals_fd)
         pts_fd[i, :] .-= 2fd_delta
         univariateEvals_fd = ntuple(j -> reduce(hcat, pts_fd[j, :] .^ k for k in 0:p)', d)
-        polynomialAssembly!(out_minus_fd, fmset, coeffs, univariateEvals_fd)
+        basisAssembly!(out_minus_fd, fmset, coeffs, univariateEvals_fd)
         pts_fd[i, :] .+= fd_delta
         grad_term = (out_plus_fd - out_minus_fd) / (2fd_delta)
         grad_fd[i, :] = grad_term
