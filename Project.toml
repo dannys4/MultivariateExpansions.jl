@@ -9,6 +9,7 @@ MuladdMacro = "46d2c3a1-f734-5fdb-9937-b9b9aeba4221"
 MultiIndexing = "b97ecbdf-1535-430e-a7c7-b5702749f368"
 
 [compat]
+MuladdMacro = "0.2"
 MultiIndexing = "1"
 julia = "1"
 
