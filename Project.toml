@@ -7,6 +7,7 @@ version = "1.0.6"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MuladdMacro = "46d2c3a1-f734-5fdb-9937-b9b9aeba4221"
 MultiIndexing = "b97ecbdf-1535-430e-a7c7-b5702749f368"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [compat]
 MuladdMacro = "0.2"

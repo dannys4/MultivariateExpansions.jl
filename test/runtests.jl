@@ -1,5 +1,5 @@
 using MultivariateExpansions
-using Test, Random, MultiIndexing, Statistics
+using Test, Random, MultiIndexing, Statistics, LinearAlgebra
 
 Monomials() = MultivariateExpansions.MonicOrthogonalPolynomial(Returns(0.),Returns(0.))
 

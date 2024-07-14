@@ -62,3 +62,25 @@ end
         end
     end
 end
+
+@testset "Check time-based score matching" begin
+    dim = 3
+    mset_mat = [zeros(Int, dim) I(dim) 2I(dim);zeros(Int, 1, 2dim+1)]
+    mset = MultiIndexSet(mset_mat)
+    fmset = FixedMultiIndexSet(mset)
+    M_pts = 2
+    rng = Xoshiro(284028)
+    data = 0.25ones(M_pts, dim) #randn(rng, M_pts, dim)
+    time_pts = [0.]
+    time_wts = [1.]
+    basis = MultivariateBasis((ProbabilistHermitePolynomial() for _ in 1:dim)..., LaguerrePolynomial())
+    integrator = MultivariateExpansions.EulerMaruyamaIntegrator(M_pts, dim)
+    A, b, constant_term, linear_space_index, quad_space_index = MultivariateExpansions.score_optimal_coeff_time(fmset, basis, data, integrator, time_pts, time_wts)
+    sort!(linear_space_index)
+    sort!(quad_space_index)
+    @test constant_term == 1
+    @test linear_space_index == collect(2:dim+1)
+    @test quad_space_index == collect(dim+2:2dim+1)
+    # coeffs = A \ b
+    # @info "" coeffs
+end

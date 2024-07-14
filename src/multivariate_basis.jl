@@ -7,11 +7,11 @@ export basesAverage!, basesAverage
 
 A type to store a multivariate basis as a tuple of univariate bases.
 """
-struct MultivariateBasis{N, T}
+struct MultivariateBasis{d, T}
     univariateBases::T
-    function MultivariateBasis(univariateBases::Vararg{UnivariateBasis, N}) where {N}
+    function MultivariateBasis(univariateBases::Vararg{UnivariateBasis, d}) where {d}
         basisTuple = tuple(univariateBases...)
-        new{N, typeof(basisTuple)}(basisTuple)
+        new{d, typeof(basisTuple)}(basisTuple)
     end
 end
 
@@ -68,9 +68,9 @@ function EvalDiff2!(
         eval_space::NTuple{N, AbstractMatrix{U}}, diff_space::NTuple{N, AbstractMatrix{U}},
         diff2_space::NTuple{N, AbstractMatrix{U}},
         basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
-    for j in 1:N
+    @inbounds for j in 1:N
         EvalDiff2!(eval_space[j], diff_space[j], diff2_space[j],
-            basis.univariateBases[j], @view(pts[:, j]))
+            basis.univariateBases[j], @view(pts[:,j]))
     end
     nothing
 end
