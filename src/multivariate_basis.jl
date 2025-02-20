@@ -1,6 +1,9 @@
 export MultivariateBasis
 export basisAssembly!, basisAssembly
 export basesAverage!, basesAverage
+using UnivariateApprox: UnivariateBasis
+
+import UnivariateApprox: Evaluate!, EvalDiff!, EvalDiff2!, Evaluate, EvalDiff, EvalDiff2
 
 """
     MultivariateBasis(univariateBases...)
