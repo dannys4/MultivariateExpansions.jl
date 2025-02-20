@@ -1,15 +1,6 @@
 module MultivariateExpansions
 
-using MultiIndexing, LinearAlgebra, MuladdMacro
-
-# Univariate basis functions
-include("univariate_basis.jl")
-
-# Univariate polynomial families
-include("univariate_poly.jl")
-
-# Univariate mollified basis
-include("mollified_basis.jl")
+using MultiIndexing, LinearAlgebra, UnivariateApprox
 
 # Multivariate basis assembly and evaluation
 include("multivariate_basis.jl")
