@@ -1,6 +1,6 @@
 module MultivariateExpansions
 
-using MultiIndexing, LinearAlgebra, MuladdMacro, UnivariateApprox
+using MultiIndexing, LinearAlgebra, UnivariateApprox
 
 # Multivariate basis assembly and evaluation
 include("multivariate_basis.jl")
