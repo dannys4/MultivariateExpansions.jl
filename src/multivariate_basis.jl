@@ -245,8 +245,9 @@ function basesAverage!(out::AbstractVector, fmset::FixedMultiIndexSet{d},
         @assert size(univariateEvals[i], 2)==M_pts "Number of points must match"
     end
     tmp_all = zeros(eltype(univariateEvals[1]), M_pts, Threads.nthreads())
+    map_to_idx = Dict{Int, Int}(Threads.threadpooltids(:default)[i] => i for i in 1:Threads.nthreads())
     @inbounds Threads.@threads for midx in 1:N_midx
-        tmp = view(tmp_all, :, Threads.threadid())
+        tmp = view(tmp_all, :, map_to_idx[Threads.threadid()])
         start_midx = fmset.starts[midx]
         end_midx = fmset.starts[midx + 1] - 1
 
