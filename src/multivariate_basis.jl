@@ -246,7 +246,6 @@ function basesAverage!(out::AbstractVector, fmset::FixedMultiIndexSet{d},
     end
     tmp_all = zeros(eltype(univariateEvals[1]), M_pts, Threads.nthreads())
     @inbounds Threads.@threads for midx in 1:N_midx
-        Threads.threadid() > Threads.nthreads() && continue
         tmp = view(tmp_all, :, Threads.threadid())
         start_midx = fmset.starts[midx]
         end_midx = fmset.starts[midx + 1] - 1
