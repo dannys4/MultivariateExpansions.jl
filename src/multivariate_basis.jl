@@ -222,15 +222,6 @@ function Evaluate!(out::AbstractMatrix, fmset::FixedMultiIndexSet{d},
     nothing
 end
 
-function get_thread_ids()
-    # If julia >= 1.10, use the following
-    if VERSION >= v"1.10"
-        return Threads.threadpooltids(Threads.threadpool(Threads.threadid()))
-    else
-        return 1:Threads.nthreads()
-    end
-end
-
 """
     basesAverage!(out, fmset, univariateEvals)
 
@@ -254,10 +245,9 @@ function basesAverage!(out::AbstractVector, fmset::FixedMultiIndexSet{d},
         @assert size(univariateEvals[i], 2)==M_pts "Number of points must match"
     end
     tmp_all = zeros(eltype(univariateEvals[1]), M_pts, Threads.nthreads())
-    thread_ids = get_thread_ids()
-    map_to_idx = Dict{Int, Int}(thread_ids[i] => i for i in 1:Threads.nthreads())
     @inbounds Threads.@threads for midx in 1:N_midx
-        tmp = view(tmp_all, :, map_to_idx[Threads.threadid()])
+        Threads.threadid() > Threads.nthreads() && continue
+        tmp = view(tmp_all, :, Threads.threadid())
         start_midx = fmset.starts[midx]
         end_midx = fmset.starts[midx + 1] - 1
 
