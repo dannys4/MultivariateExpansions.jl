@@ -19,6 +19,15 @@ struct MultivariateBasis{N, T}
 end
 
 """
+    MultivariateBasis(univariateBasis, N)
+
+Create a multivariate basis by repeating a univariate basis N times.
+"""
+function MultivariateBasis(univariateBasis::UnivariateBasis, N::Int)
+    MultivariateBasis(ntuple(_ -> univariateBasis, N))
+end
+
+"""
     Evaluate!(eval_space, basis, pts)
 
 Evaluate all univariate bases associated with a multivariate basis at a set of points.
@@ -91,7 +100,7 @@ Evaluate all univariate bases associated with a multivariate basis at a set of p
 See also [`Evaluate!`](@ref).
 """
 function Evaluate(p::NTuple{N,Int}, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
-    eval_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 1)), N)
+    eval_space = ntuple(j -> similar(pts, (p[j] + 1, size(pts, 1))), N)
     Evaluate!(eval_space, basis, pts)
     eval_space
 end
@@ -109,8 +118,8 @@ Evaluate all univariate bases and their derivatives associated with a multivaria
 See also [`EvalDiff!`](@ref).
 """
 function EvalDiff(p::NTuple{N,Int}, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
-    eval_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 1)), N)
-    diff_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 1)), N)
+    eval_space = ntuple(j -> similar(pts, (p[j] + 1, size(pts, 1))), N)
+    diff_space = ntuple(j -> similar(pts, (p[j] + 1, size(pts, 1))), N)
     EvalDiff!(eval_space, diff_space, basis, pts)
     eval_space, diff_space
 end
@@ -128,9 +137,9 @@ Evaluate all univariate bases and their first two derivatives associated with a 
 See also [`EvalDiff2!`](@ref).
 """
 function EvalDiff2(p::NTuple{N,Int}, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
-    eval_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 1)), N)
-    diff_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 1)), N)
-    diff2_space = ntuple(j -> Matrix{U}(undef, p[j] + 1, size(pts, 1)), N)
+    eval_space = ntuple(j -> similar(pts, (p[j] + 1, size(pts, 1))), N)
+    diff_space = ntuple(j -> similar(pts, (p[j] + 1, size(pts, 1))), N)
+    diff2_space = ntuple(j -> similar(pts, (p[j] + 1, size(pts, 1))), N)
     EvalDiff2!(eval_space, diff_space, diff2_space, basis, pts)
     eval_space, diff_space, diff2_space
 end
@@ -146,36 +155,41 @@ Evaluate a multivariate expansion on a set of points given the coefficients and 
 - `coeffs::AbstractVector`: The coefficients of the multivariate expansion (N,)
 - `univariateEvals::NTuple{d, AbstractMatrix}`: The univariate evaluations at each marginal point (d,(p_j, M)), where p_j is the maximum degree of the j-th univariate basis
 """
-function basisAssembly!(out::AbstractVector, fmset::FixedMultiIndexSet{d},
-        coeffs::AbstractVector, univariateEvals::NTuple{d, T}) where {
-        d, T <: AbstractMatrix}
+function basisAssembly!(out::V, fmset::FixedMultiIndexSet{d},
+        coeffs::V, univariateEvals::NTuple{d, M}; kwargs...) where {
+        d, U, V <: AbstractVector{U}, M <: AbstractMatrix{U}}
     # M = num points, N = num multi-indices, d = input dimension
     # out = (M,)
     # coeffs = (N,)
     # univariateEvals = (d,(p_j, M))
     N_midx = length(fmset.starts) - 1
     M_pts = length(out)
-    @assert length(coeffs)==N_midx "Length of coeffs must match number of multi-indices"
+    @argcheck length(coeffs)==N_midx DimensionMismatch
 
     @inbounds for i in 1:d
-        @assert size(univariateEvals[i], 1)>=fmset.max_orders[i] + 1 "Degree must match"
-        @assert size(univariateEvals[i], 2)==length(out) "Number of points must match"
+        @argcheck size(univariateEvals[i], 1)>=fmset.max_orders[i] + 1
+        @argcheck size(univariateEvals[i], 2)==M_pts DimensionMismatch
     end
+    @argcheck AK.get_backend(out) == AK.get_backend(univariateEvals[1])
+    @argcheck AK.get_backend(out) == AK.get_backend(coeffs)
+    @argcheck AK.get_backend(out) == AK.get_backend(fmset.starts)
 
-    for pt_idx in 1:M_pts
-        @inbounds for midx in 1:N_midx
-            start_midx = fmset.starts[midx]
-            end_midx = fmset.starts[midx + 1] - 1
+    (;starts, nz_indices, nz_values) = fmset
 
-            termVal = 1.0
+    AK.foreachindex(out; kwargs...) do i; @inbounds begin
+        for midx in 1:N_midx
+            start_midx = starts[midx]
+            end_midx = starts[midx + 1] - 1
+
+            termVal = one(U)
             for j in start_midx:end_midx
-                dim = fmset.nz_indices[j]
-                power = fmset.nz_values[j]
-                termVal *= univariateEvals[dim][power + 1, pt_idx]
+                dim = nz_indices[j]
+                power = nz_values[j]
+                termVal *= univariateEvals[dim][power + 1, i]
             end
-            out[pt_idx] = muladd(coeffs[midx], termVal, out[pt_idx])
+            out[i] = muladd(coeffs[midx], termVal, out[i])
         end
-    end
+    end; end
     nothing
 end
 
@@ -191,34 +205,35 @@ Evaluate the basis of a multivariate expansion given the evaluations of the univ
 
 See also [`Evaluate`](@ref).
 """
-function Evaluate!(out::AbstractMatrix, fmset::FixedMultiIndexSet{d},
-        univariateEvals::NTuple{d, T}) where {d, T <: AbstractMatrix}
+function Evaluate!(out::M, fmset::FixedMultiIndexSet{d},
+        univariateEvals::NTuple{d, M}) where {d, U, M <: AbstractMatrix{U}}
     # M = num points, N = num multi-indices, d = input dimension
     # out = (N,M)
     # univariateEvals = (d,(p_j, M))
     N_midx = length(fmset)
     M_pts = size(out, 2)
-    @assert size(out, 1)==N_midx "Row count of out must match number of multi-indices"
+    @argcheck size(out, 1)==N_midx DimensionMismatch
 
     @inbounds for i in 1:d
-        @assert size(univariateEvals[i], 1)>=fmset.max_orders[i] + 1 "Degree must match"
-        @assert size(univariateEvals[i], 2)==M_pts "Number of points must match"
+        @argcheck size(univariateEvals[i], 1)>=fmset.max_orders[i] + 1
+        @argcheck size(univariateEvals[i], 2)==M_pts DimensionMismatch
     end
+    (;starts, nz_indices, nz_values) = fmset
+    AK.foreachindex(out) do idx; begin
+    # @inbounds Threads.@threads for pt_idx in 1:M_pts
+        # for midx in 1:N_midx
+        pt_idx, midx = (idx - 1) ÷ N_midx + 1, (idx - 1) % N_midx + 1 # (col, row)
+        start_midx = starts[midx]
+        end_midx = starts[midx + 1] - 1
 
-    @inbounds Threads.@threads for pt_idx in 1:M_pts
-        for midx in 1:N_midx
-            start_midx = fmset.starts[midx]
-            end_midx = fmset.starts[midx + 1] - 1
-
-            termVal = 1.0
-            for j in start_midx:end_midx
-                dim = fmset.nz_indices[j]
-                power = fmset.nz_values[j]
-                termVal *= univariateEvals[dim][power + 1, pt_idx]
-            end
-            out[midx, pt_idx] = termVal
+        termVal = one(U)
+        for j in start_midx:end_midx
+            dim = nz_indices[j]
+            power = nz_values[j]
+            termVal *= univariateEvals[dim][power + 1, pt_idx]
         end
-    end
+        out[midx, pt_idx] = termVal
+    end; end
     nothing
 end
 

@@ -4,13 +4,17 @@ authors = ["Daniel Sharp <dannys4@mit.edu> and contributors"]
 version = "1.0.6"
 
 [deps]
+AcceleratedKernels = "6a4ca0a5-0e36-4168-a932-d9be78d558f1"
+ArgCheck = "dce04be8-c92d-5529-be00-80e4d2c0e197"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MultiIndexing = "b97ecbdf-1535-430e-a7c7-b5702749f368"
 UnivariateApprox = "549aa1d2-f639-4cc7-b8e4-a7f233081321"
 
 [compat]
-MultiIndexing = "1"
-UnivariateApprox = "0.1.0"
+AcceleratedKernels = "0.3.1"
+ArgCheck = "2.4.0"
+MultiIndexing = "1.2"
+UnivariateApprox = "0.2"
 julia = "1"
 
 [extras]
