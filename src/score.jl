@@ -64,12 +64,13 @@ end
 
 function score_optimal_coeff(
         fmset::FixedMultiIndexSet{d}, univariateEvals::NT, univariateDiff::NT,
-        univariateDiff2::NT) where {d, NT <: NTuple{d, <:AbstractMatrix}}
+        univariateDiff2::NT) where {d, U, NT <: NTuple{d, <:AbstractMatrix{U}}}
     M_pts = size(univariateEvals[1], 2)
     N_midx = length(fmset)
-    G = zeros(N_midx, N_midx)
-    v = zeros(N_midx)
-    Gj = zeros(d, N_midx)
+    backend = get_backend(univariateEvals[1])
+    G = zeros(backend, U, (N_midx, N_midx))
+    v = zeros(backend, U, (N_midx,))
+    Gj = zeros(backend, U, (d, N_midx))
     constant_term = 0
     for midx in 1:N_midx
         start_midx = fmset.starts[midx]

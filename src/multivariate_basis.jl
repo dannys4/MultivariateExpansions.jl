@@ -219,7 +219,7 @@ function Evaluate!(out::M, fmset::FixedMultiIndexSet{d},
         @argcheck size(univariateEvals[i], 2)==M_pts DimensionMismatch
     end
     (;starts, nz_indices, nz_values) = fmset
-    AK.foreachindex(out) do idx; begin
+    AK.foreachindex(out) do idx; @inbounds begin
     # @inbounds Threads.@threads for pt_idx in 1:M_pts
         # for midx in 1:N_midx
         pt_idx, midx = (idx - 1) ÷ N_midx + 1, (idx - 1) % N_midx + 1 # (col, row)
@@ -249,29 +249,48 @@ Evaluate the average of a set of basis functions over a set of points given the 
 
 See also [`basesAverage`](@ref).
 """
-function basesAverage!(out::AbstractVector, fmset::FixedMultiIndexSet{d},
-        univariateEvals::NTuple{d, T}) where {d, T <: AbstractMatrix}
+function basesAverage!(out::AbstractVector{U}, fmset::FixedMultiIndexSet{d},
+        univariateEvals::NTuple{d, M}) where {d, U, M <: AbstractMatrix{U}}
     N_midx = length(fmset)
     M_pts = size(univariateEvals[1], 2)
-    @assert length(out)==N_midx "Length of out must match number of multi-indices"
+    @argcheck length(out)==N_midx
 
     @inbounds for i in 1:d
-        @assert size(univariateEvals[i], 1)>=fmset.max_orders[i] + 1 "Degree must match"
-        @assert size(univariateEvals[i], 2)==M_pts "Number of points must match"
+        @argcheck size(univariateEvals[i], 1)>=fmset.max_orders[i] + 1
+        @argcheck size(univariateEvals[i], 2)==M_pts DimensionMismatch
     end
-    tmp_all = zeros(eltype(univariateEvals[1]), M_pts, Threads.nthreads())
-    @inbounds Threads.@threads for midx in 1:N_midx
-        tmp = view(tmp_all, :, Threads.threadid())
-        start_midx = fmset.starts[midx]
-        end_midx = fmset.starts[midx + 1] - 1
+    (;starts, nz_indices, nz_values) = fmset
+    backend = AK.get_backend(out)
+    if backend isa GPU
+        AK.mapreduce(+, CartesianIndices((M_pts, N_midx)), AK.get_backend(out); dims=1, init=zero(U), temp=out) do idx; begin
+            pt_idx, midx = Tuple(idx)
+            start_midx = starts[midx]
+            end_midx = starts[midx + 1] - 1
 
-        tmp .= 1.0
-        for j in start_midx:end_midx
-            dim = fmset.nz_indices[j]
-            power = fmset.nz_values[j]
-            tmp .*= univariateEvals[dim][power + 1, :]
-        end
-        out[midx] = sum(tmp) / M_pts
+            tmp = one(U)
+            for j in start_midx:end_midx
+                dim = nz_indices[j]
+                power = nz_values[j]
+                tmp *= univariateEvals[dim][power + 1, pt_idx]
+            end
+            tmp
+        end; end
+        out ./= M_pts
+    else
+        # TODO: AK/OMT can't do reduction over one dimension. Replace once feature is added
+        AK.foreachindex(out) do midx; begin
+            out[midx] = zero(U)
+            for pt_idx in 1:M_pts
+                termVal = one(U)
+                for j in starts[midx]:starts[midx + 1] - 1
+                    dim = nz_indices[j]
+                    power = nz_values[j]
+                    termVal *= univariateEvals[dim][power + 1, pt_idx]
+                end
+                out[midx] += termVal
+            end
+            out[midx] /= M_pts
+        end; end
     end
     nothing
 end
@@ -284,8 +303,9 @@ Out-of-place assembly of multivariate basis
 See [`basisAssembly!`](@ref) for details.
 """
 function basisAssembly(
-        fmset::FixedMultiIndexSet{d}, coeffs::AbstractVector, univariateEvals) where {d}
-    out = zeros(eltype(univariateEvals[1]), size(univariateEvals[1], 2))
+        fmset::FixedMultiIndexSet{d}, coeffs::AbstractVector{U}, univariateEvals::NTuple{d,AbstractMatrix{U}}) where {d, U}
+    M = size(univariateEvals[1], 2)
+    out = zeros(get_backend(coeffs), U, (M,))
     basisAssembly!(out, fmset, coeffs, univariateEvals)
     out
 end
@@ -297,8 +317,9 @@ Out-of-place evaluation of multivariate expansion
 
 See [`Evaluate!`](@ref) for details.
 """
-function Evaluate(fmset::FixedMultiIndexSet{d}, univariateEvals) where {d}
-    out = zeros(eltype(univariateEvals[1]), length(fmset), size(univariateEvals[1], 2))
+function Evaluate(fmset::FixedMultiIndexSet{d}, univariateEvals::NTuple{d,AbstractMatrix{U}}) where {d,U}
+    N, M = length(fmset), size(univariateEvals[1], 2)
+    out = zeros(get_backend(univariateEvals[1]), U, (N, M))
     Evaluate!(out, fmset, univariateEvals)
     out
 end
@@ -310,8 +331,9 @@ Out-of-place evaluation of the average of a set of basis functions
 
 See [`basesAverage!`](@ref) for details.
 """
-function basesAverage(fmset::FixedMultiIndexSet{d}, univariateEvals) where {d}
-    out = zeros(length(fmset))
+function basesAverage(fmset::FixedMultiIndexSet{d}, univariateEvals::NTuple{d,AbstractMatrix{U}}) where {d,U}
+    N = length(fmset)
+    out = zeros(get_backend(univariateEvals[1]), U, (N,))
     basesAverage!(out, fmset, univariateEvals)
     out
 end

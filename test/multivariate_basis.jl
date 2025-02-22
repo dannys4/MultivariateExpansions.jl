@@ -4,7 +4,7 @@ rng = Xoshiro(284028)
 mset = CreateTotalOrder(d, p)
 fmset = FixedMultiIndexSet(mset)
 pts = randn(rng, N_pts, d)
-univariateEvals = ntuple(j->reduce(hcat, pts[:,j] .^ k for k in 0:p)', d)
+univariateEvals = ntuple(j->collect(reduce(hcat, pts[:,j] .^ k for k in 0:p)'), d)
 @testset "Polynomial Assembly" begin
     coeffs = randn(rng, length(fmset))
     out = zeros(N_pts)
