@@ -1,6 +1,6 @@
 module MultivariateExpansions
 
-using MultiIndexing, LinearAlgebra, UnivariateApprox, ArgCheck
+using MultiIndexing, LinearAlgebra, UnivariateApprox, ArgCheck, StaticArrays
 import AcceleratedKernels as AK
 using KernelAbstractions: allocate, zeros, GPU, get_backend
 

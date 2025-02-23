@@ -220,8 +220,6 @@ function Evaluate!(out::M, fmset::FixedMultiIndexSet{d},
     end
     (;starts, nz_indices, nz_values) = fmset
     AK.foreachindex(out) do idx; @inbounds begin
-    # @inbounds Threads.@threads for pt_idx in 1:M_pts
-        # for midx in 1:N_midx
         pt_idx, midx = (idx - 1) ÷ N_midx + 1, (idx - 1) % N_midx + 1 # (col, row)
         start_midx = starts[midx]
         end_midx = starts[midx + 1] - 1
@@ -262,7 +260,7 @@ function basesAverage!(out::AbstractVector{U}, fmset::FixedMultiIndexSet{d},
     (;starts, nz_indices, nz_values) = fmset
     backend = AK.get_backend(out)
     if backend isa GPU
-        AK.mapreduce(+, CartesianIndices((M_pts, N_midx)), AK.get_backend(out); dims=1, init=zero(U), temp=out) do idx; begin
+        AK.mapreduce(+, CartesianIndices((M_pts, N_midx)), AK.get_backend(out); dims=1, init=zero(U), temp=out) do idx; @inbounds begin
             pt_idx, midx = Tuple(idx)
             start_midx = starts[midx]
             end_midx = starts[midx + 1] - 1
@@ -278,7 +276,7 @@ function basesAverage!(out::AbstractVector{U}, fmset::FixedMultiIndexSet{d},
         out ./= M_pts
     else
         # TODO: AK/OMT can't do reduction over one dimension. Replace once feature is added
-        AK.foreachindex(out) do midx; begin
+        AK.foreachindex(out) do midx; @inbounds begin
             out[midx] = zero(U)
             for pt_idx in 1:M_pts
                 termVal = one(U)
