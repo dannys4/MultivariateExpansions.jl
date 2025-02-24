@@ -155,9 +155,9 @@ Evaluate a multivariate expansion on a set of points given the coefficients and 
 - `coeffs::AbstractVector`: The coefficients of the multivariate expansion (N,)
 - `univariateEvals::NTuple{d, AbstractMatrix}`: The univariate evaluations at each marginal point (d,(p_j, M)), where p_j is the maximum degree of the j-th univariate basis
 """
-function basisAssembly!(out::V, fmset::FixedMultiIndexSet{d},
-        coeffs::V, univariateEvals::NTuple{d, M}; kwargs...) where {
-        d, U, V <: AbstractVector{U}, M <: AbstractMatrix{U}}
+function basisAssembly!(out::V1, fmset::FixedMultiIndexSet{d},
+        coeffs::V2, univariateEvals::NTuple{d, M}; kwargs...) where {
+        d, U, V1 <: AbstractVector{U}, V2 <: AbstractVector{U}, M <: AbstractMatrix{U}}
     # M = num points, N = num multi-indices, d = input dimension
     # out = (M,)
     # coeffs = (N,)
@@ -177,6 +177,7 @@ function basisAssembly!(out::V, fmset::FixedMultiIndexSet{d},
     (;starts, nz_indices, nz_values) = fmset
 
     AK.foreachindex(out; kwargs...) do i; @inbounds begin
+        out[i] = zero(U)
         for midx in 1:N_midx
             start_midx = starts[midx]
             end_midx = starts[midx + 1] - 1

@@ -118,61 +118,60 @@ function score_optimal_coeff(
     H, v
 end
 
-
-function score_optimal_coeff_nohess(fmset::FixedMultiIndexSet{d}, univariateEvals::NT,
-        univariateDiff::NT) where {d, U, NT <: NTuple{d, <:AbstractMatrix{U}}}
-    M_pts = size(univariateEvals[1], 2)
+using ProgressMeter
+function score_optimal_coeff_nohess!(G::M, h::M, fmset::FixedMultiIndexSet{d}, univariateEvals::NT,
+        univariateDiff::NT; kwargs...) where {d, U, M<:AbstractMatrix{U}, NT <: NTuple{d, <:AbstractMatrix{U}}}
     N_midx = length(fmset)
+    M_pts = size(univariateEvals[1], 2)
+    @argcheck size(G) == (N_midx,N_midx) DimensionMismatch
+    @argcheck size(h) == (d,N_midx) DimensionMismatch
     backend = get_backend(univariateEvals[1])
     (;starts, nz_indices, nz_values) = fmset
-    reduce_op = (x::Tuple{U, SVector{d, U}},y::Tuple{U, SVector{d, U}}) -> (x[1]+y[1], x[2]+y[2])
-    init = (zero(U), zero(SVector{d, U}))
-    G = zeros(backend, U, (N_midx, N_midx))
-    h = zeros(backend, SVector{d, U}, (N_midx,))
-    Threads.@threads for idx in CartesianIndices(G)
-        i, j = Tuple(idx)
-        i > j && continue
-        G_ij, h_ij = AK.mapreduce(reduce_op, 1:M_pts, backend; init, neutral=init) do pt_idx
-            start_midx_i, end_midx_i = starts[i], starts[i + 1] - 1
-            start_midx_j, end_midx_j = starts[j], starts[j + 1] - 1
-            G_ij = one(U)
+    iter_space = Base.OneTo(N_midx*N_midx)
+    AK.foreachindex(iter_space, backend) do idx_midx; @inbounds begin
+        i, j = (idx_midx - 1) ÷ N_midx + 1, (idx_midx - 1) % N_midx + 1
+        i > j && return
+        start_midx_i, end_midx_i = starts[i], starts[i + 1] - 1
+        start_midx_j, end_midx_j = starts[j], starts[j + 1] - 1
+        for pt_idx in 1:M_pts
+            G_ij_pt = one(U)
             for k in start_midx_i:end_midx_i
                 dim = nz_indices[k]
                 power = nz_values[k]
-                G_ij *= univariateEvals[dim][power + 1, pt_idx]
+                G_ij_pt *= univariateEvals[dim][power + 1, pt_idx]
             end
             for k in start_midx_j:end_midx_j
                 dim = nz_indices[k]
                 power = nz_values[k]
-                G_ij *= univariateEvals[dim][power + 1, pt_idx]
+                G_ij_pt *= univariateEvals[dim][power + 1, pt_idx]
             end
-            h_ij = zero(SVector{d, U})
+            G[i,j] += G_ij_pt
             if i == j
-                grad = zero(MVector{d, U})
-                for k_prime in 1:d
-                    ret = one(U)
+                for grad_dim in 1:d
+                    ret_pt = one(U)
                     has_grad = false
                     for k in start_midx_i:end_midx_i
                         dim = nz_indices[k]
                         power = nz_values[k]
-                        if dim == k_prime
+                        if dim == grad_dim
                             has_grad = true
-                            ret *= univariateDiff[dim][power, pt_idx]
+                            ret_pt *= univariateDiff[dim][power, pt_idx]
                         else
-                            ret *= univariateEvals[dim][power + 1, pt_idx]
+                            ret_pt *= univariateEvals[dim][power + 1, pt_idx]
                         end
                     end
-                    has_grad && (grad[k_prime] = ret)
+                    has_grad && (h[grad_dim, i] += ret_pt)
                 end
-                h_ij = SVector(grad)
             end
-            G_ij, h_ij
         end
-        G[i, j] = G[j, i] = G_ij / M_pts
+        G[i, j] /= M_pts
         if i == j
-            h[i] = h_ij / M_pts
+            grad_dim = 1
+            for grad_dim in 1:d
+                h[grad_dim, i] /= M_pts
+            end
         end
-    end
-    h = reduce(hcat, h)'
-    G, h
+        nothing
+    end; end
+    nothing
 end
