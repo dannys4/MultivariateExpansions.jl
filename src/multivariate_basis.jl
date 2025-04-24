@@ -3,19 +3,28 @@ export basisAssembly!, basisAssembly
 export basesAverage!, basesAverage
 using UnivariateApprox: UnivariateBasis
 
+using Base: length
+
 import UnivariateApprox: Evaluate!, EvalDiff!, EvalDiff2!, Evaluate, EvalDiff, EvalDiff2
+
+abstract type AbstractMultivariateBasis{d} end
 
 """
     MultivariateBasis(univariateBases...)
 
 A type to store a multivariate basis as a tuple of univariate bases.
 """
-struct MultivariateBasis{N, T}
+struct MultivariateBasis{d, T} <: AbstractMultivariateBasis{d}
     univariateBases::T
-    function MultivariateBasis(univariateBases::Vararg{UnivariateBasis, N}) where {N}
+    function MultivariateBasis(univariateBases::Vararg{UnivariateBasis, _d}) where {_d}
         basisTuple = tuple(univariateBases...)
-        new{N, typeof(basisTuple)}(basisTuple)
+        @argcheck _d isa Integer
+        new{_d, typeof(basisTuple)}(basisTuple)
     end
+end
+
+function Base.length(::MultivariateBasis{d}) where d
+    d
 end
 
 """
