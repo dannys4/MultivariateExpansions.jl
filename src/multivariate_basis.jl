@@ -34,7 +34,7 @@ function MultivariateBasis(univariateBasis::UnivariateBasis, N::Int)
     MultivariateBasis{N,typeof(basis)}(basis)
 end
 
-function Base.length(::MultivariateBasis{d}) where d
+function Base.length(::MultivariateBasis{d}) where {d}
     d
 end
 

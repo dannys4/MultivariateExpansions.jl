@@ -1,7 +1,7 @@
 name = "MultivariateExpansions"
 uuid = "9d32bc2f-1c07-4c0c-b0b2-5edd4e076357"
 authors = ["Daniel Sharp <dannys4@mit.edu> and contributors"]
-version = "1.0.6"
+version = "1.1.6"
 
 [deps]
 AcceleratedKernels = "6a4ca0a5-0e36-4168-a932-d9be78d558f1"
