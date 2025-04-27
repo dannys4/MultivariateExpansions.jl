@@ -46,7 +46,7 @@ Evaluate all univariate bases associated with a multivariate basis at a set of p
 - `basis::MultivariateBasis{N}`: The multivariate basis to evaluate
 - `pts::AbstractMatrix`: The points to evaluate the basis at, (M,N)
 """
-function Evaluate!(eval_space::NTuple{N, AbstractMatrix{U}},
+function UnivariateApprox.Evaluate!(eval_space::NTuple{N, AbstractMatrix{U}},
         basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
     for j in 1:N
         Evaluate!(eval_space[j], basis.univariateBases[j], @view(pts[:, j]))
@@ -65,7 +65,7 @@ Evaluate all univariate bases and their derivatives associated with a multivaria
 - `basis::MultivariateBasis{N}`: The multivariate basis to evaluate
 - `pts::AbstractMatrix`: The points to evaluate the basis at, (M,N)
 """
-function EvalDiff!(
+function UnivariateApprox.EvalDiff!(
         eval_space::NTuple{N, AbstractMatrix{U}}, diff_space::NTuple{N, AbstractMatrix{U}},
         basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
     for j in 1:N
@@ -85,7 +85,7 @@ Evaluate all univariate bases and their first two derivatives associated with a 
 - `diff2_space::NTuple{N, AbstractMatrix}`: The output space to store the second derivatives, (N,(p_j+1, M))
 - `basis::MultivariateBasis{N}`: The multivariate basis to evaluate
 """
-function EvalDiff2!(
+function UnivariateApprox.EvalDiff2!(
         eval_space::NTuple{N, AbstractMatrix{U}}, diff_space::NTuple{N, AbstractMatrix{U}},
         diff2_space::NTuple{N, AbstractMatrix{U}},
         basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
@@ -108,7 +108,7 @@ Evaluate all univariate bases associated with a multivariate basis at a set of p
 
 See also [`Evaluate!`](@ref).
 """
-function Evaluate(p::NTuple{N,Int}, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
+function UnivariateApprox.Evaluate(p::NTuple{N,Int}, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
     eval_space = ntuple(j -> similar(pts, (p[j] + 1, size(pts, 1))), N)
     Evaluate!(eval_space, basis, pts)
     eval_space
@@ -126,7 +126,7 @@ Evaluate all univariate bases and their derivatives associated with a multivaria
 
 See also [`EvalDiff!`](@ref).
 """
-function EvalDiff(p::NTuple{N,Int}, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
+function UnivariateApprox.EvalDiff(p::NTuple{N,Int}, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
     eval_space = ntuple(j -> similar(pts, (p[j] + 1, size(pts, 1))), N)
     diff_space = ntuple(j -> similar(pts, (p[j] + 1, size(pts, 1))), N)
     EvalDiff!(eval_space, diff_space, basis, pts)
@@ -145,7 +145,7 @@ Evaluate all univariate bases and their first two derivatives associated with a 
 
 See also [`EvalDiff2!`](@ref).
 """
-function EvalDiff2(p::NTuple{N,Int}, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
+function UnivariateApprox.EvalDiff2(p::NTuple{N,Int}, basis::MultivariateBasis{N}, pts::AbstractMatrix{U}) where {N, U}
     eval_space = ntuple(j -> similar(pts, (p[j] + 1, size(pts, 1))), N)
     diff_space = ntuple(j -> similar(pts, (p[j] + 1, size(pts, 1))), N)
     diff2_space = ntuple(j -> similar(pts, (p[j] + 1, size(pts, 1))), N)
