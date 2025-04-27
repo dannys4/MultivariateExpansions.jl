@@ -18,7 +18,7 @@ ArgCheck = "2.4.0"
 KernelAbstractions = "0.9.34"
 MultiIndexing = "1.2"
 StaticArrays = "1.9.12"
-UnivariateApprox = "0.2"
+UnivariateApprox = "0.2 - 0"
 julia = "1.10"
 
 [extras]
