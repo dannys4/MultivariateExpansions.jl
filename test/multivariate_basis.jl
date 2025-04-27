@@ -1,4 +1,9 @@
-
+d = 5
+@testset "Simple coverage tests" begin
+    uni_basis = LegendrePolynomial()
+    basis = MultivariateBasis(uni_basis, d)
+    @test length(basis) == d
+end
 d, p, N_pts = 5, 5, 1000
 rng = Xoshiro(284028)
 mset = CreateTotalOrder(d, p)

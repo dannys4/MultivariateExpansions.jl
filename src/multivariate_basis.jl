@@ -16,15 +16,12 @@ A type to store a multivariate basis as a tuple of univariate bases.
 """
 struct MultivariateBasis{d, T} <: AbstractMultivariateBasis{d}
     univariateBases::T
-    function MultivariateBasis(univariateBases::Vararg{UnivariateBasis, _d}) where {_d}
-        basisTuple = tuple(univariateBases...)
-        @argcheck _d isa Integer
-        new{_d, typeof(basisTuple)}(basisTuple)
-    end
 end
 
-function Base.length(::MultivariateBasis{d}) where d
-    d
+function MultivariateBasis(univariateBases::Vararg{UnivariateBasis, _d}) where {_d}
+    basisTuple = tuple(univariateBases...)
+    @argcheck _d isa Integer
+    MultivariateBasis{_d, typeof(basisTuple)}(basisTuple)
 end
 
 """
@@ -33,7 +30,12 @@ end
 Create a multivariate basis by repeating a univariate basis N times.
 """
 function MultivariateBasis(univariateBasis::UnivariateBasis, N::Int)
-    MultivariateBasis(ntuple(_ -> univariateBasis, N))
+    basis = ntuple(_ -> univariateBasis, N)
+    MultivariateBasis{N,typeof(basis)}(basis)
+end
+
+function Base.length(::MultivariateBasis{d}) where d
+    d
 end
 
 """
